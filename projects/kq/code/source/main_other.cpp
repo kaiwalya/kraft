@@ -1,5 +1,4 @@
-#include "PooledMemoryAllocator.h"
-#include "StandardLibraryMemoryAllocator.h"
+#include "core.hpp"
 
 #include "stdlib.h"
 #include "time.h"
@@ -8,8 +7,8 @@
 #include "windows.h"
 
 
-
-using namespace kore::memory;
+using namespace kq::core;
+using namespace kq::core::memory;
 
 
 void test(MemoryWorker alloc, ui32 iSeq){
@@ -467,11 +466,11 @@ int main(int argc, char **argv){
 	
 
 	{
-		kore::memory::StandardLibraryMemoryAllocator alloc;	
+		StandardLibraryMemoryAllocator alloc;	
 		MemoryWorker wAlloc;
 		alloc.getMemoryWorker(wAlloc);
 
-		kore::memory::PooledMemoryAllocator poolalloc(wAlloc);
+		PooledMemoryAllocator poolalloc(wAlloc);
 		MemoryWorker wPoolAlloc;
 		poolalloc.getMemoryWorker(wPoolAlloc);
 		

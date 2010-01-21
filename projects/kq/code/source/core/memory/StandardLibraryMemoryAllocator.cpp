@@ -1,7 +1,8 @@
-#include "StandardLibraryMemoryAllocator.h"
+#include "StandardLibraryMemoryAllocator.hpp"
 #include "malloc.h"
 
-using namespace kore::memory;
+using namespace kq::core;
+using namespace kq::core::memory;
 
 StandardLibraryMemoryAllocator::StandardLibraryMemoryAllocator(){
 	//m_nBytesAllocated = 0;

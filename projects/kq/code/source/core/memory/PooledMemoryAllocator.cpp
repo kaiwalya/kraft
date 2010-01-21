@@ -1,10 +1,11 @@
-#include "PooledMemoryAllocator.h"
-#include "oops.h"
+#include "PooledMemoryAllocator.hpp"
+#include "../oops.hpp"
 
 //memset memcpy
 #include "string.h"
 
-using namespace kore::memory;
+using namespace kq::core;
+using namespace kq::core::memory;
 using namespace oops;
 
 PooledMemoryAllocator::PooledMemoryAllocator(MemoryWorker  & memoryMemoryWorker):memory(memoryMemoryWorker){
