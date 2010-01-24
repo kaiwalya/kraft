@@ -40,6 +40,9 @@ namespace kq{
 
 				void * allocator(void * p, kq::core::ui64 n);
 				static void * _allocator(void * context, void * p, kq::core::ui64 n);
+
+				void operator = (PooledMemoryAllocator &){
+				}
 					
 			public:
 

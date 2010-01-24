@@ -385,6 +385,9 @@ struct Map{
 
 		return pRet;
 	}
+
+	void operator = (Map<DataType> &){
+	}
 	
 };
 
@@ -457,7 +460,7 @@ class IGameState{
 };
 
 
-int main(int argc, char **argv){
+int main_other(int , char **){
 
 	
 
@@ -473,7 +476,8 @@ int main(int argc, char **argv){
 		PooledMemoryAllocator poolalloc(wAlloc);
 		MemoryWorker wPoolAlloc;
 		poolalloc.getMemoryWorker(wPoolAlloc);
-		
+	
+		/*	
 		
 		ui8 s1[] = "";
 		ui8 s2[] = "a";
@@ -511,7 +515,7 @@ int main(int argc, char **argv){
 		//m.map(NullTerminatedStringReadCursor<ui8>(s7), 0);
 		//m.map(NullTerminatedStringReadCursor<ui8>(s8), 0);
 		
-		
+		*/
 
 		//ui32 iSeq = (ui32)time(0);
 		//printf("Speedup = %f\n", timeFunc(testAlloc, iSeq)/timeFunc(testPoolAlloc, iSeq));
@@ -519,6 +523,7 @@ int main(int argc, char **argv){
 	}
 	_CrtDumpMemoryLeaks();	
 	
+	return 0;
 };
 
 

@@ -13,6 +13,8 @@ MakeTypes(i, 8, __int8);
 MakeTypes(i, 16, __int16);
 MakeTypes(i, 32, __int32);
 MakeTypes(i, 64, __int64);
+typedef char c8;
+typedef wchar_t c16;
 }
 }
 #undef MakeTypes
@@ -27,6 +29,8 @@ MakeTypes(i, 8, int8_t);
 MakeTypes(i, 16, int16_t);
 MakeTypes(i, 32, int32_t);
 MakeTypes(i, 64, int64_t);
+typedef char c8;
+typedef wchar_t c16;
 #undef MakeTypes
 }
 }
