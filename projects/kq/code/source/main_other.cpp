@@ -1,3 +1,4 @@
+#ifdef WIN32
 #include "core.hpp"
 
 #include "stdlib.h"
@@ -527,3 +528,4 @@ int main_other(int , char **){
 };
 
 
+#endif

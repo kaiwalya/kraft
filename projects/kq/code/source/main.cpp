@@ -1,9 +1,13 @@
-#include "windows.h"
+
 #include "core.hpp"
 #include "stdarg.h"
 #include "stdio.h"
 
 using namespace kq::core;
+
+
+
+#include "windows.h"
 
 class WindowsConsoleOutputStream{
 
@@ -49,7 +53,7 @@ public:
 	i32 output(c16 * pFormat, ...){
 	   va_list args;
 	   va_start( args, pFormat );	   
-	   i64 nChars = vswprintf_s((wchar_t *)m_sBuffer, nMaxBytesInLogMessage/2, pFormat, args);
+	   i64 nChars = vswprintf_s<nMaxBytesInLogMessage/2>(*(wchar_t (*)[nMaxBytesInLogMessage/2])m_sBuffer, pFormat, args);
 	   //Add null termination
 	   nChars++;
 	   i64 iRet;
@@ -93,18 +97,25 @@ LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 	return lRet;
 }
 
+int main(int /*argc*/, char **){
+	WinMain(GetModuleHandle(0), 0, 0, 0);
+}
+
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
 
 
-	if(AttachConsole(ATTACH_PARENT_PROCESS) == FALSE){
-		if(AllocConsole() == FALSE){
-			return -1;
-		}
-	}	
+	if(!GetStdHandle(STD_OUTPUT_HANDLE)){
+		if(AttachConsole(ATTACH_PARENT_PROCESS) == FALSE){
+			if(AllocConsole() == FALSE){
+				return -1;
+				
+			}
+		}	
+	}
 
 	WindowsConsoleOutputStream console;
 	WindowsConsoleOutputStream * pConsole = &console;
-	pConsole->output("Attaching Console...\tAttached.\n");
+	pConsole->output("Console Init...\tAttached.\n");
 
 
 	DISPLAY_DEVICE dd = {0};

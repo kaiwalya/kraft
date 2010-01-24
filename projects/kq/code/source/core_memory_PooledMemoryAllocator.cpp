@@ -3,6 +3,7 @@
 
 //memset memcpy
 #include "string.h"
+#include "assert.h"
 
 using namespace kq::core;
 using namespace kq::core::memory;
@@ -60,7 +61,7 @@ void PooledMemoryAllocator::cleanupPool(ui8 index){
 	balancePool(index, 0);
 	if(arrPoolArray[index] || arrPoolCount[index]){
 		//printf("Cleanup Failed\n");
-		_asm int 3;
+		assert(0);
 	}
 }
 void PooledMemoryAllocator::cleanupPools(){		
@@ -213,7 +214,7 @@ void * PooledMemoryAllocator::allocator(void * p, ui64 n){
 					do{
 						pBlock = (BlockHeader *)(memory(0, arrSize[index]));
 						if(arrSize[index] < nBytes ){
-							_asm int 3;
+							assert(0);
 						}
 
 						if(!pBlock){
@@ -291,3 +292,4 @@ const ui8 PooledMemoryAllocator::nSizes = sizeof(arrSize)/sizeof(arrSize[0]);
 const ui64 PooledMemoryAllocator::nMaxSize = arrSize[nSizes - 1];
 const ui32 PooledMemoryAllocator::iBalanceThreshold = 512;
 const ui32 PooledMemoryAllocator::iBalanceToThreshold = 256;
+
