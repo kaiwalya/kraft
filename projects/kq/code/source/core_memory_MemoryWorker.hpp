@@ -1,8 +1,8 @@
 #ifndef MEMORYWORKER_HPP
 #define MEMORYWORKER_HPP
 
-#include "IntegerTypes.hpp"
-#include "Worker.hpp"
+#include "core_IntegerTypes.hpp"
+#include "core_Worker.hpp"
 
 namespace kq{
 	namespace core{

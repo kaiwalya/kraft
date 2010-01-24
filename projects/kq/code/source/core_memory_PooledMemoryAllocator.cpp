@@ -1,5 +1,5 @@
-#include "PooledMemoryAllocator.hpp"
-#include "oops.hpp"
+#include "core_memory_PooledMemoryAllocator.hpp"
+#include "core_oops.hpp"
 
 //memset memcpy
 #include "string.h"
@@ -13,7 +13,7 @@ PooledMemoryAllocator::PooledMemoryAllocator(MemoryWorker  & memoryMemoryWorker)
 	arrMapSizeToPoolArrayIndex = (ui8 *)memory(0, sizeof(*arrMapSizeToPoolArrayIndex) * (nMaxSize + 1));
 	
 	ui32 i = 0;
-	ui32 index = 0;
+	ui8 index = 0;
 	while(i <= nMaxSize){
 		while(i <= arrSize[index]){
 			arrMapSizeToPoolArrayIndex[i] = index;
@@ -86,7 +86,7 @@ void * PooledMemoryAllocator::allocator(void * p, ui64 n){
 		if(n){
 			//realloc				
 			BlockHeader ** ppBlockNew = 0;
-			ui8 indexNew = -1;
+			i16 indexNew = -1;
 			if(nBytes <= nMaxSize){
 				indexNew = arrMapSizeToPoolArrayIndex[nBytes];
 				ppBlockNew = &(arrPoolArray[indexNew]);

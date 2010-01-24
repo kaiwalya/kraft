@@ -1,4 +1,4 @@
-#include "StandardLibraryMemoryAllocator.hpp"
+#include "core_memory_StandardLibraryMemoryAllocator.hpp"
 #include "malloc.h"
 
 using namespace kq::core;
@@ -12,8 +12,8 @@ StandardLibraryMemoryAllocator::~StandardLibraryMemoryAllocator(){
 	//printf("%d Bytes Leaked\n", m_nBytesAllocated);
 }
 
-void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 n){
-	StandardLibraryMemoryAllocator * pAllocator = (StandardLibraryMemoryAllocator *)context;
+void * StandardLibraryMemoryAllocator::allocator(void * /*context*/, void * p, ui64 n){
+	//StandardLibraryMemoryAllocator * pAllocator = (StandardLibraryMemoryAllocator *)context;
 
 	/*
 	if(p){

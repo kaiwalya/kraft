@@ -1,8 +1,8 @@
 #ifndef _STANDARD_LIBRARY_MEMORY_ALLOCATOR_H_
 #define _STANDARD_LIBRARY_MEMORY_ALLOCATOR_H_
 
-#include "IntegerTypes.hpp"
-#include "MemoryWorker.hpp"
+#include "core_IntegerTypes.hpp"
+#include "core_memory_MemoryWorker.hpp"
 
 namespace kq{
 

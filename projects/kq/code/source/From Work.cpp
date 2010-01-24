@@ -2,7 +2,7 @@ extern "C"{
     //#include "kq.h"
 }
 
-#include "IntegerTypes.hpp"
+#include "core.hpp"
 
 #include "windows.h"
 
