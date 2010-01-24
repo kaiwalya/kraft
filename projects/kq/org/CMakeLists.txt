@@ -20,29 +20,37 @@ ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
 
 
+
+file(GLOB_RECURSE groupCore RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/*.[c,h]pp")
+
+message("${groupCore}")
+
+source_group(core FILES ${groupCore})
+
+
 include_directories("../code/include")
 
-add_executable("kq" WIN32
+add_executable("kq" WIN32 ${groupCore}
 
 #core
 
-../code/source/core/IntegerTypes.hpp
+#../code/source/core/IntegerTypes.hpp
 
-../code/source/core/oops.hpp
-../code/source/core/oops/OutOfMemoryException.hpp
+#../code/source/core/oops.hpp
+#../code/source/core/oops/OutOfMemoryException.hpp
 
-../code/source/core/Worker.hpp
+#../code/source/core/Worker.hpp
 
-../code/source/core/memory.hpp
-../code/source/core/memory/MemoryWorker.hpp
-../code/source/core/memory/PooledMemoryAllocator.cpp
-../code/source/core/memory/PooledMemoryAllocator.hpp
-../code/source/core/memory/StandardLibraryMemoryAllocator.cpp
-../code/source/core/memory/StandardLibraryMemoryAllocator.hpp
+#../code/source/core/memory.hpp
+#../code/source/core/memory/MemoryWorker.hpp
+#../code/source/core/memory/PooledMemoryAllocator.cpp
+#../code/source/core/memory/PooledMemoryAllocator.hpp
+#../code/source/core/memory/StandardLibraryMemoryAllocator.cpp
+#../code/source/core/memory/StandardLibraryMemoryAllocator.hpp
 
 
-../code/source/main
-../code/source/main_other
+#../code/source/main
+#../code/source/main_other
 
 
 )
