@@ -1,7 +1,7 @@
 #ifndef POOLEDMEMORYALLOCATOR_H_
 #define POOLEDMEMORYALLOCATOR_H_
 
-#include "../IntegerTypes.hpp"
+#include "IntegerTypes.hpp"
 #include "MemoryWorker.hpp"
 
 namespace kq{

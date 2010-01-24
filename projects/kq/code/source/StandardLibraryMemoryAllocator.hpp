@@ -1,7 +1,7 @@
 #ifndef _STANDARD_LIBRARY_MEMORY_ALLOCATOR_H_
 #define _STANDARD_LIBRARY_MEMORY_ALLOCATOR_H_
 
-#include "../IntegerTypes.hpp"
+#include "IntegerTypes.hpp"
 #include "MemoryWorker.hpp"
 
 namespace kq{

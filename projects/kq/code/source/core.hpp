@@ -1,9 +1,9 @@
 #ifndef CORE_HPP
 #define CORE_HPP
 
-#include "core/IntegerTypes.hpp"
-#include "core/oops.hpp"
-#include "core/Worker.hpp"
-#include "core/memory.hpp"
+#include "IntegerTypes.hpp"
+#include "oops.hpp"
+#include "Worker.hpp"
+#include "memory.hpp"
 
 #endif

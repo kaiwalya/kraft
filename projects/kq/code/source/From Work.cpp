@@ -1,6 +1,8 @@
 extern "C"{
-    #include "kq.h"
+    //#include "kq.h"
 }
+
+#include "IntegerTypes.hpp"
 
 #include "windows.h"
 
@@ -8,6 +10,8 @@ extern "C"{
 
 #include "malloc.h"
 #include "string.h"
+
+using namespace kq::core;
 
 /*
 MemoryManager
