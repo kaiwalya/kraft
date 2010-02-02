@@ -8,7 +8,7 @@ using namespace kq::core;
 
 
 #include "windows.h"
-
+#include "gl/gl.h"
 
 class RefCounter{
 public:
@@ -298,6 +298,35 @@ public:
 };
 
 
+struct VertexTable{
+	ui32 nVertices;
+	double (* m_pVertex)[3];
+};
+
+struct FaceTable{
+	ui32 nFaces;
+	ui32 (* m_pFace)[3];
+};
+
+struct Model{
+	VertexTable tabV;
+	FaceTable tabF;		
+};
+
+struct Renderable{
+	bool bDirty;
+	Renderable * pChildren;
+};
+
+
+double TriangleModelVertexTableVertexData[3][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
+ui32 TriangleModelVertexTableVertexCount = sizeof(TriangleModelVertexTableVertexData)/sizeof(TriangleModelVertexTableVertexData[0]);
+
+ui32 TriangleModelFaceTableFaceData[1][3] = {0, 1, 2};
+ui32 TriangleModelFaceTableFaceCount = sizeof(TriangleModelFaceTableFaceData)/sizeof(TriangleModelFaceTableFaceData[0]);
+
+Model TriangleModel = {{TriangleModelVertexTableVertexCount, TriangleModelVertexTableVertexData}, {TriangleModelFaceTableFaceCount, TriangleModelFaceTableFaceData}};
+
 LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 	LRESULT lRet = 0;	
 	switch(m){
@@ -467,6 +496,49 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 										//Go back and process all messages in queue before proceeding
 										continue;
+									}
+
+									
+									{
+										glEnable (GL_BLEND);
+										glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+										glClear(GL_COLOR_BUFFER_BIT);
+
+										Model * pModel = &TriangleModel;
+
+										{
+											glBegin(GL_TRIANGLES);
+
+											FaceTable &tabF = pModel->tabF;
+											VertexTable &tabV = pModel->tabV;
+
+											ui32 iFace, nFaces;
+											nFaces = tabF.nFaces;
+
+										
+											ui32 (*pFace)[3] = tabF.m_pFace;
+											double (*pVertex)[3] = tabV.m_pVertex;
+
+											for(iFace = 0; iFace < nFaces; iFace++){																								
+
+												glVertex3dv(pVertex[pFace[0][0]]);
+												glVertex3dv(pVertex[pFace[0][1]]);
+												glVertex3dv(pVertex[pFace[0][2]]);
+
+												
+												pFace++;
+											}
+
+
+											glEnd();
+											
+										}
+
+
+
+
+										
 									}
 
 									SwapBuffers(hMainWindowDC);
