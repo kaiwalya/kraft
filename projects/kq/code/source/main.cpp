@@ -37,11 +37,11 @@ static RefCounter nullCounter;
 template<typename t>
 class Pointer{
     RefCounter * m_pRefCounter;
-    void * m_pBufferedObject;
+    t* m_pBufferedObject;
 
     void setReference(RefCounter * pRefCounter){
         m_pRefCounter = pRefCounter;
-        m_pBufferedObject = pRefCounter->object;
+        m_pBufferedObject = reinterpret_cast<t *>(pRefCounter->object);
     };
 
     void attach(RefCounter * pRefCounter){
@@ -60,9 +60,7 @@ class Pointer{
         }
         setReference(&nullCounter);
 
-    }
-
-   
+    }	
 public:
 
     Pointer(RefCounter * pRefCounter){
@@ -81,7 +79,7 @@ public:
         detach();
     }
 
-    Pointer<t> & operator = (const Pointer<t> & oprand){
+    Pointer<t> & operator = (const Pointer<t> oprand){
         if(m_pRefCounter->object != oprand.m_pRefCounter->object){
             detach();
             attach(oprand.m_pRefCounter);           
@@ -105,8 +103,58 @@ public:
     }
 
     t * operator ->()const {
+		if(!m_pBufferedObject){
+			_asm int 3;
+		}
         return (t *)(m_pBufferedObject);
     };
+
+	operator bool (){
+		return m_pRefCounter->object != 0;
+	}
+
+
+	template<typename t2>
+	Pointer<t2> cast(){
+		t * pt1 = 0;
+		t2 * pt2;
+		pt2 = pt1;
+
+		return Pointer<t2 *>(m_pRefCounter);
+	}
+
+	template<typename t2>
+	Pointer<t2> castStatic(){
+
+		t * pt1 = 0;
+		t2 * pt2;
+		pt2 = static_cast<t2 *>(pt1);
+
+		return Pointer<t2>(m_pRefCounter);
+	}
+
+	
+	template<typename t2>
+	Pointer<t2> castDynamic(){
+		
+		t * pt1 = 0;
+		t2 * pt2;
+		pt2 = dynamic_cast<t2 *>(pt1);
+
+		return Pointer<t2>(m_pRefCounter);
+	}
+
+	
+	template<typename t2>
+	Pointer<t2> castReinterpret(){
+		
+		t * pt1 = 0;
+		t2 * pt2;
+		pt2 = reinterpret_cast<t2 *>(pt1);
+
+		return Pointer<t2>(m_pRefCounter);
+	}
+	
 
 };
 
@@ -308,15 +356,155 @@ struct FaceTable{
 	ui32 (* m_pFace)[3];
 };
 
-struct Model{
-	VertexTable tabV;
-	FaceTable tabF;		
+
+
+struct SceneGraphNode{
+
+	Pointer<SceneGraphNode> m_pNextSibling;
+	Pointer<SceneGraphNode> m_pFirstChild;
+	
+	
+	enum OperationType{
+
+		otAttached,
+
+		otBeginMove,
+		otEndMove,
+
+		otBeginRender,
+		otEndRender,
+
+		otDetached,
+	};
+
+	virtual void operate(OperationType ot, ...){
+		ot;
+	}
+
 };
 
-struct Renderable{
-	bool bDirty;
-	Renderable * pChildren;
+
+struct Model{
+	VertexTable tabV;
+	FaceTable tabF;	
 };
+
+struct SceneGraphNode_Root: public SceneGraphNode{
+
+
+	struct StackEntry{
+		Pointer<StackEntry> pPrev;
+
+		bool bProcessed;
+		Pointer<SceneGraphNode> pNode;		
+
+	};
+
+
+	void operate(OperationType ot, ...){
+
+		
+		
+		Pointer<StackEntry> pTop(new RefCounter( new StackEntry));
+		pTop->pNode = m_pFirstChild;
+		pTop->bProcessed = false;
+
+		
+			
+		while(pTop){
+			if(pTop->pNode){
+				pTop->pNode->operate(ot);
+								
+
+				//push child
+				Pointer<StackEntry> pNewTop(new RefCounter( new StackEntry));
+				pNewTop->pNode = pTop->pNode->m_pFirstChild;
+				pNewTop->pPrev = pTop;
+				pTop = pNewTop;
+			}else{
+				//Last child reached,
+
+				//pop child
+				pTop = pTop->pPrev;
+
+				//go to sibling
+				if(pTop){
+					//We can assume that if we pop, there is always a node if there is a valid top
+					pTop->pNode = pTop->pNode->m_pNextSibling;
+					pTop->bProcessed = false;
+				}
+				
+			}
+		}
+		
+
+	}
+};
+
+struct SceneGraphNode_OpenGL_First: public SceneGraphNode{
+	
+	void render(){
+		glEnable (GL_BLEND);
+		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+
+	void operate(OperationType ot, ...){
+
+		switch(ot){
+			case otBeginRender:
+				render();
+				break;
+		}
+
+	}
+};
+
+struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
+
+	Pointer<Model> pModel;
+
+	void render(){
+		VertexTable &tabV = pModel->tabV;
+		FaceTable &tabF = pModel->tabF;
+
+		
+
+		ui32 iFace, nFaces;
+		nFaces = tabF.nFaces;
+
+
+	
+		ui32 (*pFace)[3] = tabF.m_pFace;
+		double (*pVertex)[3] = tabV.m_pVertex;
+
+		glBegin(GL_TRIANGLES);
+		for(iFace = 0; iFace < nFaces; iFace++){																								
+
+			glVertex3dv(pVertex[pFace[0][0]]);
+			glVertex3dv(pVertex[pFace[0][1]]);
+			glVertex3dv(pVertex[pFace[0][2]]);
+
+			
+			pFace++;
+		}
+		glEnd();
+		
+
+
+	}
+
+	void operate(OperationType ot, ...){
+
+		switch(ot){
+			case otBeginRender:
+				render();
+				break;
+		}
+
+	}
+};
+
 
 
 double TriangleModelVertexTableVertexData[3][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
@@ -478,6 +666,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 								ShowWindow(hMainWindow, SW_MAXIMIZE);
 
+								Pointer<SceneGraphNode> pRoot;
+
 								LARGE_INTEGER iCountOld;
 								iCountOld.QuadPart = 0;
 								while(bContinue){
@@ -500,41 +690,26 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 									
 									{
-										glEnable (GL_BLEND);
-										glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-										glClear(GL_COLOR_BUFFER_BIT);
-
-										Model * pModel = &TriangleModel;
-
-										{
-											glBegin(GL_TRIANGLES);
-
-											FaceTable &tabF = pModel->tabF;
-											VertexTable &tabV = pModel->tabV;
-
-											ui32 iFace, nFaces;
-											nFaces = tabF.nFaces;
 
 										
-											ui32 (*pFace)[3] = tabF.m_pFace;
-											double (*pVertex)[3] = tabV.m_pVertex;
 
-											for(iFace = 0; iFace < nFaces; iFace++){																								
+										if(!pRoot){
+											pRoot = (new RefCounter (new SceneGraphNode_Root));
 
-												glVertex3dv(pVertex[pFace[0][0]]);
-												glVertex3dv(pVertex[pFace[0][1]]);
-												glVertex3dv(pVertex[pFace[0][2]]);
+											Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new RefCounter ( new SceneGraphNode_OpenGL_First);
 
-												
-												pFace++;
-											}
+											Pointer<SceneGraphNode_OpenGL_Model> pModel = new RefCounter (new SceneGraphNode_OpenGL_Model);
+											pModel->pModel = new RefCounter ( new Model);
+											pModel->pModel->tabF = TriangleModel.tabF;
+											pModel->pModel->tabV = TriangleModel.tabV;
 
-
-											glEnd();
+											pOpenGL->m_pFirstChild = pModel.castStatic<SceneGraphNode>();
+											pRoot->m_pFirstChild = pOpenGL.castStatic<SceneGraphNode>();
 											
 										}
 
+										pRoot->operate(SceneGraphNode::otBeginRender);
+										pRoot->operate(SceneGraphNode::otEndRender);									
 
 
 
