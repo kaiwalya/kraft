@@ -8,6 +8,7 @@ using namespace kq::core;
 
 
 #include "windows.h"
+#include "math.h"
 #include "gl/gl.h"
 
 class RefCounter{
@@ -366,20 +367,22 @@ struct SceneGraphNode{
 	
 	enum OperationType{
 
-		otAttached,
-
-		otBeginMove,
-		otEndMove,
-
-		otBeginRender,
-		otEndRender,
-
-		otDetached,
+		
+		otNone = 0,
+		otMove = 1,
+		otRender = 2,
+		
 	};
 
 	virtual void operate(OperationType ot, ...){
 		ot;
 	}
+
+	virtual void postOperate(OperationType ot, ...){
+		ot;
+	}
+
+
 
 };
 
@@ -403,7 +406,6 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 
 	void operate(OperationType ot, ...){
 
-		
 		
 		Pointer<StackEntry> pTop(new RefCounter( new StackEntry));
 		pTop->pNode = m_pFirstChild;
@@ -430,6 +432,7 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 				//go to sibling
 				if(pTop){
 					//We can assume that if we pop, there is always a node if there is a valid top
+					pTop->pNode->postOperate(ot);
 					pTop->pNode = pTop->pNode->m_pNextSibling;
 					pTop->bProcessed = false;
 				}
@@ -452,13 +455,64 @@ struct SceneGraphNode_OpenGL_First: public SceneGraphNode{
 	void operate(OperationType ot, ...){
 
 		switch(ot){
-			case otBeginRender:
+			case otRender:
 				render();
 				break;
 		}
 
 	}
 };
+
+
+struct SceneGraphNode_OpenGL_Transform: public SceneGraphNode{
+
+	double d;
+
+	SceneGraphNode_OpenGL_Transform(){
+		d = 0.0;
+	}
+
+	
+	void beginRender(){
+		glPushMatrix();
+		
+		glRotated(360 * sin(d), 0, 0, 1);
+		glScaled(sin(3 * d), cos(7 *d), 0.0);
+		glTranslated(0.5 * cos(5 * d), 0.5 * sin(3 * d), 0.0);
+	}
+
+	void endRender(){
+		glPopMatrix();
+	}
+
+	void move(){		
+		d = d + 0.01;
+	}
+
+	void operate(OperationType ot, ...){
+
+		switch(ot){
+			case otRender:
+				beginRender();
+				break;			
+			case otMove:
+				move();
+				break;
+		}
+
+	}
+
+	void postOperate(OperationType ot, ...){
+
+		switch(ot){
+			case otRender:				
+				endRender();
+				break;
+		}
+
+	}
+};
+
 
 struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
 
@@ -481,8 +535,11 @@ struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
 		glBegin(GL_TRIANGLES);
 		for(iFace = 0; iFace < nFaces; iFace++){																								
 
+			glColor4d(1, 0, 0, 0.6);
 			glVertex3dv(pVertex[pFace[0][0]]);
+			glColor4d(0, 1, 0, 0.6);
 			glVertex3dv(pVertex[pFace[0][1]]);
+			glColor4d(0, 0, 1, 0.6);
 			glVertex3dv(pVertex[pFace[0][2]]);
 
 			
@@ -497,7 +554,7 @@ struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
 	void operate(OperationType ot, ...){
 
 		switch(ot){
-			case otBeginRender:
+			case otRender:
 				render();
 				break;
 		}
@@ -507,7 +564,7 @@ struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
 
 
 
-double TriangleModelVertexTableVertexData[3][3] = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
+double TriangleModelVertexTableVertexData[3][3] = {{0, 0, 0}, {0.5, 0, 0}, {0, 0.5, 0}};
 ui32 TriangleModelVertexTableVertexCount = sizeof(TriangleModelVertexTableVertexData)/sizeof(TriangleModelVertexTableVertexData[0]);
 
 ui32 TriangleModelFaceTableFaceData[1][3] = {0, 1, 2};
@@ -554,7 +611,9 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 	WindowsConsoleOutputStream * pConsole = &console;
 	pConsole->output("Console Init...\tAttached.\n");
 
-	Pointer<IClock> pClock(new RefCounter(new Clock(30, new RefCounter(new StopWatch(new RefCounter(new WindowsAPITicker()))), new RefCounter(new WindowsAPISleeper))));
+	Pointer<ITicker> pTicker = new RefCounter(new WindowsAPITicker());
+	Pointer<IStopWatch> pStopWatch = new RefCounter(new StopWatch( pTicker ));
+	Pointer<IClock> pClock(new RefCounter(new Clock(80, new RefCounter(new StopWatch( pTicker )), new RefCounter(new WindowsAPISleeper))));
 
 
 	DISPLAY_DEVICE dd = {0};
@@ -703,14 +762,32 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 											pModel->pModel->tabF = TriangleModel.tabF;
 											pModel->pModel->tabV = TriangleModel.tabV;
 
-											pOpenGL->m_pFirstChild = pModel.castStatic<SceneGraphNode>();
+											Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new RefCounter (new SceneGraphNode_OpenGL_Transform);
+											
+
+											Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new RefCounter (new SceneGraphNode_OpenGL_Model);
+											pModel2->pModel = new RefCounter ( new Model);
+											pModel2->pModel->tabF = TriangleModel.tabF;
+											pModel2->pModel->tabV = TriangleModel.tabV;
+
+											pTransform->m_pFirstChild = pModel2.castStatic<SceneGraphNode>();
+
+											pOpenGL->m_pFirstChild = pTransform.castStatic<SceneGraphNode>();
+											pTransform->m_pNextSibling = pModel.castStatic<SceneGraphNode>();
+
+
 											pRoot->m_pFirstChild = pOpenGL.castStatic<SceneGraphNode>();
+
+											pStopWatch->reset();
 											
 										}
 
-										pRoot->operate(SceneGraphNode::otBeginRender);
-										pRoot->operate(SceneGraphNode::otEndRender);									
+										
+										double dSecondsSinceLastReset = (double)pStopWatch->getTickCount() / (double)pStopWatch->getTicksPerSecond();
+										pStopWatch->reset();
 
+										pRoot->operate(SceneGraphNode::otMove, dSecondsSinceLastReset);
+										pRoot->operate(SceneGraphNode::otRender);
 
 
 										
