@@ -11,154 +11,6 @@ using namespace kq::core;
 #include "math.h"
 #include "gl/gl.h"
 
-class RefCounter{
-public:
-    void * object;
-    ui32 count;
-    bool (*AtLast)(RefCounter *);
-
-    RefCounter(void * object = 0, ui32 count = 0, bool (*AtLast)(RefCounter *) = 0){   
-        this->object = object;
-        this->count = count;
-        this->AtLast = AtLast;
-    }
-
-
-    RefCounter(void * object, bool (*AtLast)(RefCounter *)){
-
-        this->count = 0;
-        this->object = object;
-        this->AtLast = AtLast;
-    }
-
-};
-
-static RefCounter nullCounter;
-
-template<typename t>
-class Pointer{
-    RefCounter * m_pRefCounter;
-    t* m_pBufferedObject;
-
-    void setReference(RefCounter * pRefCounter){
-        m_pRefCounter = pRefCounter;
-        m_pBufferedObject = reinterpret_cast<t *>(pRefCounter->object);
-    };
-
-    void attach(RefCounter * pRefCounter){
-        setReference(pRefCounter);
-
-        m_pRefCounter->count++;       
-    };
-   
-    void detach(){
-        m_pRefCounter->count--;
-        if(!m_pRefCounter->count && m_pRefCounter->object){
-            if( !(m_pRefCounter->AtLast) || !(*(m_pRefCounter->AtLast))(m_pRefCounter) ){
-                delete (t *)m_pRefCounter->object;
-                delete m_pRefCounter;
-            }
-        }
-        setReference(&nullCounter);
-
-    }	
-public:
-
-    Pointer(RefCounter * pRefCounter){
-        attach(pRefCounter);
-    };
-
-    Pointer(const Pointer<t> & pointer){
-        attach(pointer.m_pRefCounter);
-    };
-
-    Pointer(){
-        attach(&nullCounter);
-    }
-
-    ~Pointer(){
-        detach();
-    }
-
-    Pointer<t> & operator = (const Pointer<t> oprand){
-        if(m_pRefCounter->object != oprand.m_pRefCounter->object){
-            detach();
-            attach(oprand.m_pRefCounter);           
-        }
-        return *this;
-    };
-
-    operator Pointer<const t>()const{
-
-        Pointer<const t> ret(m_pRefCounter);
-        return ret;
-    }
-
-    bool operator == (const Pointer<t> & oprand) const{
-        return (oprand.m_pRefCount->object == m_pBufferedObject);
-
-    }
-
-    bool operator != (const Pointer<t> & oprand) const{
-        return (oprand.m_pRefCount->object != m_pBufferedObject);
-    }
-
-    t * operator ->()const {
-		if(!m_pBufferedObject){
-			_asm int 3;
-		}
-        return (t *)(m_pBufferedObject);
-    };
-
-	operator bool (){
-		return m_pRefCounter->object != 0;
-	}
-
-
-	template<typename t2>
-	Pointer<t2> cast(){
-		t * pt1 = 0;
-		t2 * pt2;
-		pt2 = pt1;
-
-		return Pointer<t2 *>(m_pRefCounter);
-	}
-
-	template<typename t2>
-	Pointer<t2> castStatic(){
-
-		t * pt1 = 0;
-		t2 * pt2;
-		pt2 = static_cast<t2 *>(pt1);
-
-		return Pointer<t2>(m_pRefCounter);
-	}
-
-	
-	template<typename t2>
-	Pointer<t2> castDynamic(){
-		
-		t * pt1 = 0;
-		t2 * pt2;
-		pt2 = dynamic_cast<t2 *>(pt1);
-
-		return Pointer<t2>(m_pRefCounter);
-	}
-
-	
-	template<typename t2>
-	Pointer<t2> castReinterpret(){
-		
-		t * pt1 = 0;
-		t2 * pt2;
-		pt2 = reinterpret_cast<t2 *>(pt1);
-
-		return Pointer<t2>(m_pRefCounter);
-	}
-	
-
-};
-
 class ITicker{
 public:
     virtual ui64 getTickCount() const = 0;
@@ -211,10 +63,10 @@ public:
 };
 
 class StopWatch:public IStopWatch{
-    Pointer<const ITicker> m_pProvider;
+	kq::core::memory::Pointer<const ITicker> m_pProvider;
     ui64 m_iInitialTime;
 public:
-    StopWatch(Pointer<const ITicker> pTimeProvider):m_pProvider(pTimeProvider){
+    StopWatch(kq::core::memory::Pointer<const ITicker> pTimeProvider):m_pProvider(pTimeProvider){
         reset();
     }
 
@@ -246,12 +98,12 @@ public:
 
 class Clock:public IClock{
 
-    Pointer<IStopWatch> m_pStopWatch;
-    Pointer<const ISleeper> m_pSleeper;   
+    kq::core::memory::Pointer<IStopWatch> m_pStopWatch;
+    kq::core::memory::Pointer<const ISleeper> m_pSleeper;   
     double m_dMilliSecondsPerCycle;
 
 public:
-    Clock(double dTargetCyclesPerSecond, Pointer<IStopWatch> pStopWatch, Pointer<const ISleeper> pSleeper){
+    Clock(double dTargetCyclesPerSecond, kq::core::memory::Pointer<IStopWatch> pStopWatch, kq::core::memory::Pointer<const ISleeper> pSleeper){
         m_dMilliSecondsPerCycle = 1000.0 / dTargetCyclesPerSecond;
         m_pStopWatch = pStopWatch;
         m_pSleeper = pSleeper;
@@ -361,8 +213,8 @@ struct FaceTable{
 
 struct SceneGraphNode{
 
-	Pointer<SceneGraphNode> m_pNextSibling;
-	Pointer<SceneGraphNode> m_pFirstChild;
+	kq::core::memory::Pointer<SceneGraphNode> m_pNextSibling;
+	kq::core::memory::Pointer<SceneGraphNode> m_pFirstChild;
 	
 	
 	enum OperationType{
@@ -396,10 +248,10 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 
 
 	struct StackEntry{
-		Pointer<StackEntry> pPrev;
+		kq::core::memory::Pointer<StackEntry> pPrev;
 
 		bool bProcessed;
-		Pointer<SceneGraphNode> pNode;		
+		kq::core::memory::Pointer<SceneGraphNode> pNode;		
 
 	};
 
@@ -407,7 +259,7 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 	void operate(OperationType ot, ...){
 
 		
-		Pointer<StackEntry> pTop(new RefCounter( new StackEntry));
+		kq::core::memory::Pointer<StackEntry> pTop(new kq::core::memory::RefCounter( new StackEntry));
 		pTop->pNode = m_pFirstChild;
 		pTop->bProcessed = false;
 
@@ -419,7 +271,7 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 								
 
 				//push child
-				Pointer<StackEntry> pNewTop(new RefCounter( new StackEntry));
+				kq::core::memory::Pointer<StackEntry> pNewTop(new kq::core::memory::RefCounter( new StackEntry));
 				pNewTop->pNode = pTop->pNode->m_pFirstChild;
 				pNewTop->pPrev = pTop;
 				pTop = pNewTop;
@@ -516,7 +368,7 @@ struct SceneGraphNode_OpenGL_Transform: public SceneGraphNode{
 
 struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
 
-	Pointer<Model> pModel;
+	kq::core::memory::Pointer<Model> pModel;
 
 	void render(){
 		VertexTable &tabV = pModel->tabV;
@@ -592,6 +444,7 @@ LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 }
 
 int main(int /*argc*/, char **){
+
 	WinMain(GetModuleHandle(0), 0, 0, 0);
 }
 
@@ -611,9 +464,9 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 	WindowsConsoleOutputStream * pConsole = &console;
 	pConsole->output("Console Init...\tAttached.\n");
 
-	Pointer<ITicker> pTicker = new RefCounter(new WindowsAPITicker());
-	Pointer<IStopWatch> pStopWatch = new RefCounter(new StopWatch( pTicker ));
-	Pointer<IClock> pClock(new RefCounter(new Clock(80, new RefCounter(new StopWatch( pTicker )), new RefCounter(new WindowsAPISleeper))));
+	kq::core::memory::Pointer<ITicker> pTicker = new kq::core::memory::RefCounter(new WindowsAPITicker());
+	kq::core::memory::Pointer<IStopWatch> pStopWatch = new kq::core::memory::RefCounter(new StopWatch( pTicker ));
+	kq::core::memory::Pointer<IClock> pClock(new kq::core::memory::RefCounter(new Clock(80, new kq::core::memory::RefCounter(new StopWatch( pTicker )), new kq::core::memory::RefCounter(new WindowsAPISleeper))));
 
 
 	DISPLAY_DEVICE dd = {0};
@@ -725,7 +578,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 								ShowWindow(hMainWindow, SW_MAXIMIZE);
 
-								Pointer<SceneGraphNode> pRoot;
+								kq::core::memory::Pointer<SceneGraphNode> pRoot;
 
 								LARGE_INTEGER iCountOld;
 								iCountOld.QuadPart = 0;
@@ -753,20 +606,20 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 										
 
 										if(!pRoot){
-											pRoot = (new RefCounter (new SceneGraphNode_Root));
+											pRoot = (new kq::core::memory::RefCounter (new SceneGraphNode_Root));
 
-											Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new RefCounter ( new SceneGraphNode_OpenGL_First);
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new kq::core::memory::RefCounter ( new SceneGraphNode_OpenGL_First);
 
-											Pointer<SceneGraphNode_OpenGL_Model> pModel = new RefCounter (new SceneGraphNode_OpenGL_Model);
-											pModel->pModel = new RefCounter ( new Model);
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model);
+											pModel->pModel = new kq::core::memory::RefCounter ( new Model);
 											pModel->pModel->tabF = TriangleModel.tabF;
 											pModel->pModel->tabV = TriangleModel.tabV;
 
-											Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new RefCounter (new SceneGraphNode_OpenGL_Transform);
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Transform);
 											
 
-											Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new RefCounter (new SceneGraphNode_OpenGL_Model);
-											pModel2->pModel = new RefCounter ( new Model);
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model);
+											pModel2->pModel = new kq::core::memory::RefCounter ( new Model);
 											pModel2->pModel->tabF = TriangleModel.tabF;
 											pModel2->pModel->tabV = TriangleModel.tabV;
 
