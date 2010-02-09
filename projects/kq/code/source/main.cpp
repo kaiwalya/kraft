@@ -443,9 +443,64 @@ LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 	return lRet;
 }
 
+void * operator new (size_t nBytes , void * p){
+	nBytes = 0;	
+	return p;
+}
+
+void * operator new[] (size_t nBytes , void * p){
+	nBytes = 0;
+	return p;
+}
+
+void operator delete (void * pObj, void * pMem){	
+	pMem = 0;
+	pObj = 0;
+
+}
+
+void operator delete[] (void * pObj, void * pMem){	
+	pMem = 0;
+	pObj = 0;
+
+}
+
+
+
+
+#define kq_core_memory_workerNew(memworker, classname, ...) (new (memworker(0, sizeof(classname))) classname __VA_ARGS__)
+#define kq_core_memory_workerDelete(memworker, classname, obj) (obj->~classname());(memworker(obj, 0))
+#define kq_core_memory_workerRefCountedNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, __VA_ARGS__)) ))
+
+class C{
+public:
+	C(){
+		int j;
+		j = 0;
+	}
+	~C(){
+		int j;
+		j = 0;
+	}
+};
+
+
+
 int main(int /*argc*/, char **){
 
-	WinMain(GetModuleHandle(0), 0, 0, 0);
+	kq::core::memory::MemoryWorker mem;
+	kq::core::memory::StandardLibraryMemoryAllocator a;
+	a.getMemoryWorker(mem);
+
+
+	C * pC = kq_core_memory_workerNew(mem, C);
+	if(pC){
+		kq_core_memory_workerDelete(mem, C, pC);
+	}
+
+	kq::core::memory::Pointer<C>( kq_core_memory_workerRefCountedNew(mem, C) ) ;
+
+	//WinMain(GetModuleHandle(0), 0, 0, 0);
 }
 
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
