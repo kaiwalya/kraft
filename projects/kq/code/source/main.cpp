@@ -484,6 +484,72 @@ public:
 	}
 };
 
+class Graph{
+public:
+
+	//The NodeID, it is just a stream of bits.
+
+	typedef ui32 NodeIDLengthType;
+
+	struct NodeID{
+		void * m_pID;
+		NodeIDLengthType iStartBit;
+		NodeIDLengthType iEndBit;
+	};
+
+	template<typename typ>
+	struct Vector2D{typ x, typ y};
+
+	struct Grid{
+		Grid * m_pParent;
+		Vector2D<NodeIDLengthType>
+
+
+		Vector2D<NodeIDLengthType> vTotalManagedBitCount;
+		Vector2D<ui8> vSelfManagedBitCount;
+		Vector2D<NodeIDLengthType> vChildrenManagedBitCount;
+
+		Vector2D<ui8> vChildrenCount;
+
+		union{
+			void * pData;
+			Grid ** pChildren;
+		};
+	};
+
+	Grid * m_pRoot;
+
+
+
+	typedef NodeID * PNodeID;
+	typedef bool (*PFNNodeIDAccessor)(void * pData, NodeID * pID);
+
+	typedef NodeID NodeIDListZ;
+	typedef struct {PNodeID pIDs; ui32 nIDs;} NodeIDListN;
+	typedef struct {PFNNodeIDAccessor pfnAccessor; void * pData;} NodeIDListF;
+
+	enum NodeIDList{
+		enum NodeIDListType{
+			NodeIDList_None,
+			NodeIDList_NullTerminated,
+			NodeIDList_Counted,
+			NodeIDList_IteratorFunction,
+		};
+
+		NodeIDListType typ;
+
+		union{
+			NodeIDListZ z;
+			NodeIDListN N;
+			NodeIDListF F;
+		};
+	};
+	
+	i32 connect(NodeIDList *listSrc, NodeIDList *listDest);
+	i32 disconnect(NodeIDList *listSrc, NodeIDList *listDest);
+	i32 search(NodeIDList source, NodeIDList dest, NodeIDList * pOut);
+
+};
 
 
 int main(int /*argc*/, char **){
@@ -743,4 +809,3 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 	FreeConsole();
 	return 0;
 }
-
