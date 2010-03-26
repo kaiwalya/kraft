@@ -484,6 +484,67 @@ public:
 	}
 };
 
+
+namespace ndv{
+
+	template<typename DimensionCoordinate>
+	struct NDimensionalVector{	
+		DimensionCoordinate * pOffsets;
+	};
+
+	template<typename DimensionCoordinate>
+	struct NDimensionalSegment{
+		NDimensionalVector<DimensionCoordinate> * m_pStart;
+		NDimensionalVector<DimensionCoordinate> * m_pOffsets;
+	};
+
+	template<typename DimensionCountType, typename DimensionCoordinate>
+	struct NDimensionalView{
+		ui8 * m_pStart;
+
+		//Number of dimensions
+		DimensionCountType nDimensions;
+
+		//The size of the smallest unit in the lowest dimension
+		DimensionCoordinate nBytesPerUnit;
+
+		//These are the bytes per dimension, used to calculate offsets for the next row in the same dimension
+		//thus to move from A[z][y][x] to A[z+1][y+2][x+3] would be an offset of (arr[2] + 2*arr[1] + 3*arr[0])
+		NDimensionalVector jumps;
+
+	};
+
+	template<typename DimensionCountType, typename DimensionCoordinate>
+	DimensionCoordinate nd_memcpy(NDimensionalView<DimensionCoordinate, DimensionCoordinate> * pDest, NDimensionalView<DimensionCoordinate, DimensionCoordinate> * pSrc, NDimensionalVector<DimensionCoordinate> nBytes);	
+
+	template<typename DimensionCountType, typename DimensionCoordinate>
+	DimensionCoordinate nd_memset(NDimensionalView<DimensionCoordinate, DimensionCoordinate> * pDest, ui8 * pBytesSrc, NDimensionalVector<DimensionCoordinate> nBytes);	
+}
+
+/*
+struct Box{
+
+	//Contents of this box;
+	union{
+		//Data content
+		ui8 * pData;
+
+		//Other boxes
+		Block * pChildren;
+	};
+
+	ui8 nDimensions;
+
+	//Bits determine the number of children there are, (nBits^2^nDimensions)
+	ui8 nBitsIndexedPerDimension;
+
+	//Parent
+	Box * m_pParent;
+	//Location in parent, array of number of dimensions;
+	ui8 * m_pIndices;
+};
+
+
 class Graph{
 public:
 
@@ -497,29 +558,8 @@ public:
 		NodeIDLengthType iEndBit;
 	};
 
-	template<typename typ>
-	struct Vector2D{typ x, typ y};
-
-	struct Grid{
-		Grid * m_pParent;
-		Vector2D<NodeIDLengthType>
-
-
-		Vector2D<NodeIDLengthType> vTotalManagedBitCount;
-		Vector2D<ui8> vSelfManagedBitCount;
-		Vector2D<NodeIDLengthType> vChildrenManagedBitCount;
-
-		Vector2D<ui8> vChildrenCount;
-
-		union{
-			void * pData;
-			Grid ** pChildren;
-		};
-	};
-
-	Grid * m_pRoot;
-
-
+	
+	Square * m_pRoot;
 
 	typedef NodeID * PNodeID;
 	typedef bool (*PFNNodeIDAccessor)(void * pData, NodeID * pID);
@@ -550,6 +590,8 @@ public:
 	i32 search(NodeIDList source, NodeIDList dest, NodeIDList * pOut);
 
 };
+
+*/
 
 
 int main(int /*argc*/, char **){
