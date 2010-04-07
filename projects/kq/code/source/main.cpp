@@ -485,6 +485,46 @@ public:
 };
 
 
+namespace test{
+
+	class IDataBlockReader{
+		virtual ui32 getSize() const = 0;
+		virtual ui32 read(ui32 iOffset, ui32 nBytes, void * pLocation) const = 0;
+	};
+
+	class IDataBlock: public IDataBlockReader{
+		virtual ui32 resize(ui32 newSize) = 0;
+		virtual ui32 write(ui32 iOffset, ui32 nBytes, void * pLocation) = 0;
+	};
+
+	class IInputByteStream{
+		virtual ui32 readBytes(ui32 nBytes, void * pLocation) = 0;
+	};
+
+	class IOutputByteStream{
+		virtual ui32 writeBytes(ui32 nBytes, void * pLocation) = 0;
+	};
+
+	class IOutputCharacterStream{
+		enum CharacterType{
+			ctASCII,
+		};
+		virtual ui32 writeCharacters(CharacterType t, ui32 nCharacter, char * pLocation) = 0;
+	};
+
+	class IInputCharacterStream{
+		enum CharacterType{
+			ctASCII,
+		};
+		virtual ui32 writeCharacters(CharacterType t, ui32 nCharacter, char * pLocation) = 0;
+	};
+	
+};
+
+
+
+
+/*
 namespace ndv{
 
 	template<typename DimensionCoordinate>
@@ -519,32 +559,121 @@ namespace ndv{
 
 	template<typename DimensionCountType, typename DimensionCoordinate>
 	DimensionCoordinate nd_memset(NDimensionalView<DimensionCoordinate, DimensionCoordinate> * pDest, ui8 * pBytesSrc, NDimensionalVector<DimensionCoordinate> nBytes);	
+
 }
+*/
 
-/*
-struct Box{
+struct BitBox_16x16{
+	ui8 data[32];
 
-	//Contents of this box;
-	union{
-		//Data content
-		ui8 * pData;
+	struct Address{
+		union{
+			ui8 addrByte;
+			struct {
+				ui8 bitOffset:3;
+				ui8 byteIndex:5;
+				
+			} addrSplit;
+			struct{
+				ui8 y:4;
+				ui8 x:4;
+			}addrNode;
+		};
 
-		//Other boxes
-		Block * pChildren;
+		static bool test(){
+			
+			//Check if ordering inside the struct is as per assumptions
+			Address s;
+			ui8 addrSize = sizeof(s);
+			if(addrSize != 1){
+				_asm int 3;
+				return false;
+			}
+
+			//Check that the bits are orders as expected
+			s.addrByte = 1;
+			if(s.addrSplit.bitOffset != 1 || s.addrNode.y != 1){
+				_asm int 3;
+				return false;
+			}
+			
+		}
 	};
 
-	ui8 nDimensions;
+	void up(){
+		memset(&data, 0, sizeof(data));
+	};
 
-	//Bits determine the number of children there are, (nBits^2^nDimensions)
-	ui8 nBitsIndexedPerDimension;
+	void down(){
 
-	//Parent
-	Box * m_pParent;
-	//Location in parent, array of number of dimensions;
-	ui8 * m_pIndices;
+	};
+
+	void setBit(Address s){
+		data[s.addrSplit.byteIndex] |= (ui8)((ui8)1 << s.addrSplit.bitOffset);
+	};
+
+	void resetBit(Address s){
+		data[s.addrSplit.byteIndex] &= (ui8)(~((ui8)1 << s.addrSplit.bitOffset));
+	};
+
+	bool getBit(Address s) const{
+		return ((data[s.addrSplit.byteIndex] & (ui8)((ui8)1 << s.addrSplit.bitOffset)) != 0);
+	};
+	
+	static bool test(){
+		
+		//Check inner classes
+		if(!Address::test()){
+			return false;
+		}
+
+		BitBox_16x16 box;
+		{
+			box.up();
+			for(ui16 idx = 0; idx < 256; idx++){
+				if(box.getBit(*(BitBox_16x16::Address *)&idx)){
+					_asm int 3;
+					return false;
+				}
+			}
+			box.down();
+		}
+		{
+			box.up();
+			for(ui16 idx = 0; idx < 256; idx++){
+				box.setBit(*(BitBox_16x16::Address *)&idx);
+				if(!box.getBit(*(BitBox_16x16::Address *)&idx)){
+					_asm int 3;
+					return false;
+				}
+				box.resetBit(*(BitBox_16x16::Address *)&idx);
+				if(box.getBit(*(BitBox_16x16::Address *)&idx)){
+					_asm int 3;
+					return false;
+				}
+			}
+			box.down();
+		}
+		
+		return true;
+	};
 };
 
+struct BitBox{
+	BitBox_16x16 * m_pBoxes[16][16];
+	struct Address{
+		union{
+			ui16 addrBytes;
+			
+			struct{
+				BitBox_16x16::Address y;
+				BitBox_16x16::Address x;	
+			}addrSplit;
+		};
+	};
+};
 
+/*
 class Graph{
 public:
 
@@ -590,11 +719,12 @@ public:
 	i32 search(NodeIDList source, NodeIDList dest, NodeIDList * pOut);
 
 };
-
 */
 
 
 int main(int /*argc*/, char **){
+
+	BitBox_16x16::test();
 
 	kq::core::memory::MemoryWorker mem;
 	kq::core::memory::StandardLibraryMemoryAllocator a;
