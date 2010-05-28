@@ -20,7 +20,7 @@ namespace kq{
 				};
 
 
-				kq::core::memory::MemoryWorker & memory;
+				kq::core::memory::MemoryWorker &memory;
 				kq::core::ui8 * arrMapSizeToPoolArrayIndex;
 				
 				static const kq::core::ui64 arrSize[];

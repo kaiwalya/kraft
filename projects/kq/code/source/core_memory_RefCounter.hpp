@@ -6,45 +6,90 @@
 namespace kq{
 	namespace core{
 		namespace memory{
-			class RefCounter{				
+
+			class RefCounter;
+
+
+			class DestructionWorker:public kq::core::Worker<void *, void (*)(void * , RefCounter *, void *)>{
 			public:
-				void * object;
+				DestructionWorker(void (*pfnWorker)(void * , RefCounter *, void *), void * pContext = 0){
+					set(pContext, pfnWorker);
+				};
+			public:
+				void operator()(RefCounter * pCounter, void * pObject){
+					return (*getWorkerFunction())(getWorkerContext(), pCounter, pObject);
+				};
+			};
+
+			static void DestructionWorkerFunc_noOp(void *, RefCounter *, void *){
+
+			};
+
+			template<typename classname>
+			static void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject){
+				delete ((classname *)pObject);
+				delete (pCounter);
+			};
+
+
+			class RefCounter{
+			protected:
+				void * object;				
 				ui32 count;
-				bool (*AtLast)(RefCounter *);
+
+				DestructionWorker destructor;
+
+				RefCounter():object(0), count(0), destructor(DestructionWorkerFunc_noOp){};
+								
+			public:
+				virtual ~RefCounter(){}
 
 				static RefCounter nullCounter;
 
-				RefCounter(void * object = 0, ui32 count = 0, bool (*AtLast)(RefCounter *) = 0);
-				RefCounter(void * object, bool (*AtLast)(RefCounter *));
+				RefCounter(void * object, DestructionWorker & worker, ui32 count = 0);
+
+				ui32 increment(){
+					return ++count;
+				};
+
+				void * getObject(){
+					return object;
+				}
+				const void * getObject() const{
+					return object;
+				};
+
+				ui32 decrement(){
+					int iRet = --count;
+					if(iRet == 0){						
+						if(object){
+							destructor(this, object);
+						}
+					}
+					return iRet;
+				};
 
 			};
 
 			template<typename t>
 			class Pointer{
+			public:
 				RefCounter * m_pRefCounter;
 				t* m_pBufferedObject;
 
 				void setReference(RefCounter * pRefCounter){
 					m_pRefCounter = pRefCounter;
-					m_pBufferedObject = reinterpret_cast<t *>(pRefCounter->object);
+					m_pBufferedObject = reinterpret_cast<t *>(pRefCounter->getObject());
 				};
 
 				void attach(RefCounter * pRefCounter){
 					setReference(pRefCounter);
-
-					m_pRefCounter->count++;       
+					m_pRefCounter->increment();       
 				};
 			   
 				void detach(){
-					m_pRefCounter->count--;
-					if(!m_pRefCounter->count && m_pRefCounter->object){
-						if( !(m_pRefCounter->AtLast) || !(*(m_pRefCounter->AtLast))(m_pRefCounter) ){
-							delete (t *)m_pRefCounter->object;
-							delete m_pRefCounter;
-						}
-					}
+					m_pRefCounter->decrement();
 					setReference(&kq::core::memory::RefCounter::nullCounter);
-
 				}	
 			public:
 
@@ -64,8 +109,8 @@ namespace kq{
 					detach();
 				}
 
-				Pointer<t> & operator = (const Pointer<t> oprand){
-					if(m_pRefCounter->object != oprand.m_pRefCounter->object){
+				Pointer<t> & operator = (const Pointer<t> & oprand){
+					if(m_pRefCounter->getObject() != oprand.m_pRefCounter->getObject()){
 						detach();
 						attach(oprand.m_pRefCounter);           
 					}
@@ -79,12 +124,12 @@ namespace kq{
 				}
 
 				bool operator == (const Pointer<t> & oprand) const{
-					return (oprand.m_pRefCount->object == m_pBufferedObject);
+					return (oprand.m_pRefCounter->getObject() == m_pBufferedObject);
 
 				}
 
 				bool operator != (const Pointer<t> & oprand) const{
-					return (oprand.m_pRefCount->object != m_pBufferedObject);
+					return (oprand.m_pRefCounter->object != m_pBufferedObject);
 				}
 
 				t * operator ->()const {

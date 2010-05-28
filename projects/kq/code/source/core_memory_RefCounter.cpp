@@ -9,17 +9,11 @@ kq::core::memory::RefCounter kq::core::memory::RefCounter::nullCounter;
 using namespace kq::core;
 using namespace kq::core::memory;
 
-RefCounter::RefCounter(void * object, ui32 count, bool (*AtLast)(RefCounter *)){   
-	this->object = object;
+RefCounter::RefCounter(void * object, DestructionWorker & destrutionWorker, ui32 count):destructor(destrutionWorker){
+
 	this->count = count;
-	this->AtLast = AtLast;
-}
-
-RefCounter::RefCounter(void * object, bool (*AtLast)(RefCounter *)){
-
-	this->count = 0;
 	this->object = object;
-	this->AtLast = AtLast;
+	
 }
 
 /*

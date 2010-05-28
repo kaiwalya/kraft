@@ -26,7 +26,8 @@ source_group("" FILES ${groupKQ})
 file(GLOB_RECURSE groupKQCore RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/core*.[c,h]??" "../code/source/core*.[c,h]")
 source_group(core FILES ${groupKQCore})
 
-
+file(GLOB_RECURSE groupKQFlows RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/flows*.[c,h]??" "../code/source/flows*.[c,h]")
+source_group(flows FILES ${groupKQFlows})
 
 #include_directories("../code/include")
 
