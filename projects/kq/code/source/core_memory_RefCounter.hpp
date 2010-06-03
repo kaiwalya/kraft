@@ -21,15 +21,23 @@ namespace kq{
 				};
 			};
 
-			static void DestructionWorkerFunc_noOp(void *, RefCounter *, void *){
-
-			};
+			void DestructionWorkerFunc_noOp(void *, RefCounter *, void *);
 
 			template<typename classname>
-			static void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject){
+			void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject){
 				delete ((classname *)pObject);
 				delete (pCounter);
 			};
+
+			void DestructionWorkerFunc_workerFree(void * worker, RefCounter * pCounter, void * pObject);		
+
+			template<typename classname>
+			void DestructionWorkerFunc_workerDelete(void * worker, RefCounter * pCounter, void * pObject){				
+				((classname *)pObject)->~classname();
+				pCounter->~RefCounter();
+				DestructionWorkerFunc_workerFree(worker, pCounter, pObject);
+			};
+
 
 
 			class RefCounter{
@@ -46,7 +54,7 @@ namespace kq{
 
 				static RefCounter nullCounter;
 
-				RefCounter(void * object, DestructionWorker & worker, ui32 count = 0);
+				RefCounter(void * object, DestructionWorker destructionWorker, ui32 count = 0);
 
 				ui32 increment(){
 					return ++count;
@@ -94,7 +102,11 @@ namespace kq{
 			public:
 
 				Pointer(RefCounter * pRefCounter){
-					attach(pRefCounter);
+					if(pRefCounter){
+						attach(pRefCounter);
+					}else{
+						attach(&kq::core::memory::RefCounter::nullCounter);
+					}					
 				};
 
 				Pointer(const Pointer<t> & pointer){
@@ -138,6 +150,10 @@ namespace kq{
 					}
 					return (t *)(m_pBufferedObject);
 				};
+
+				t & operator *() const{
+					return *(m_pBufferedObject);
+				}
 
 				operator bool (){
 					return m_pRefCounter->object != 0;

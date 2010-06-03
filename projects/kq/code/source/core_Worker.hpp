@@ -22,6 +22,14 @@ namespace kq{
 			}
 
 		public:
+			
+			Worker(){
+				set(0,0);
+			};
+
+			Worker(const Worker & worker){
+				set(worker.getWorkerContext(), worker.getWorkerFunction());
+			}
 
 			void set(ContextType pContext, FunctionType pfnWork){
 				context = pContext;

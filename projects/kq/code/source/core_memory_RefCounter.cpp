@@ -9,12 +9,19 @@ kq::core::memory::RefCounter kq::core::memory::RefCounter::nullCounter;
 using namespace kq::core;
 using namespace kq::core::memory;
 
-RefCounter::RefCounter(void * object, DestructionWorker & destrutionWorker, ui32 count):destructor(destrutionWorker){
+RefCounter::RefCounter(void * object, DestructionWorker destructionWorker, ui32 count):destructor(destructionWorker){
 
 	this->count = count;
 	this->object = object;
-	
 }
+
+void kq::core::memory::DestructionWorkerFunc_workerFree(void * worker, RefCounter * pCounter, void * pObject){
+	kq::core::memory::MemoryWorker & mem = *((kq::core::memory::MemoryWorker *)worker);
+	mem(pObject, 0);
+	mem(pCounter, 0);
+};
+
+void kq::core::memory::DestructionWorkerFunc_noOp(void *, RefCounter *, void *){}
 
 /*
 void * ProxyNew::operator new(size_t nBytes, Pointer<MemoryWorker> pWorker){

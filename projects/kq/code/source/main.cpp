@@ -455,8 +455,9 @@ LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 
 
 
-#define kq_core_memory_workerEasyClassTypeRefCountedNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, EasyClassTypeRefCounter<classname>, (memworker, kq_core_memory_workerNew(memworker, classname, __VA_ARGS__), 0, EasyClassTypeRefCounter<classname>::AtLast) ))
-#define kq_core_memory_workerEasyBasicTypeRefCountedNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, EasyBasicTypeRefCounter<classname>, (memworker, kq_core_memory_workerNew(memworker, classname, __VA_ARGS__), 0, EasyBasicTypeRefCounter<classname>::AtLast) ))
+#define kq_core_memory_workerRefCountedBasicNew(memworker, classname) (kq_core_memory_workerNew(memworker,kq::core::memory::RefCounter,(memworker(0, sizeof(classname)),kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerFree, &memworker))))
+#define kq_core_memory_workerRefCountedClassNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, (__VA_ARGS__)), kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &memworker))))
+
 
 /*
 namespace ndv{
@@ -915,9 +916,16 @@ int main(int /*argc*/, char **){
 	kq::core::memory::StandardLibraryMemoryAllocator a;
 	a.getMemoryWorker(mem0);
 
+	kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);
+	
+
 	kq::core::memory::MemoryWorker mem;
-	kq::core::memory::PooledMemoryAllocator b(mem0);
-	b.getMemoryWorker(mem);
+	pPooledAllocator->getMemoryWorker(mem);
+
+	kq::core::memory::Pointer<int[64]> psz = 0;
+	psz = kq_core_memory_workerRefCountedBasicNew(mem, int[64]);	
+	(*psz)[3] = 0;
+
 
 	/*
 	kq::core::memory::Pointer<DataQueue<sz>> pQ = kq_core_memory_workerEasyClassTypeRefCountedNew(mem, DataQueue<sz>, (mem));
