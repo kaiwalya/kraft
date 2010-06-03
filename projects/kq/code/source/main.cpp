@@ -245,7 +245,7 @@ struct Model{
 	VertexTable tabV;
 	FaceTable tabF;	
 };
-/*
+
 struct SceneGraphNode_Root: public SceneGraphNode{
 
 
@@ -261,7 +261,7 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 	void operate(OperationType ot, ...){
 
 		
-		kq::core::memory::Pointer<StackEntry> pTop(new kq::core::memory::RefCounter( new StackEntry));
+		kq::core::memory::Pointer<StackEntry> pTop(new kq::core::memory::RefCounter( new StackEntry, kq::core::memory::DestructionWorkerFunc_delete<StackEntry>));
 		pTop->pNode = m_pFirstChild;
 		pTop->bProcessed = false;
 
@@ -273,7 +273,7 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 								
 
 				//push child
-				kq::core::memory::Pointer<StackEntry> pNewTop(new kq::core::memory::RefCounter( new StackEntry));
+				kq::core::memory::Pointer<StackEntry> pNewTop(new kq::core::memory::RefCounter( new StackEntry, kq::core::memory::DestructionWorkerFunc_delete<StackEntry>));
 				pNewTop->pNode = pTop->pNode->m_pFirstChild;
 				pNewTop->pPrev = pTop;
 				pTop = pNewTop;
@@ -445,18 +445,10 @@ LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 	return lRet;
 }
 
-*/
 
 
 #include <new>
 
-#define kq_core_memory_workerNew(memworker, classname, ...) (new (memworker(0, sizeof(classname))) classname __VA_ARGS__)
-#define kq_core_memory_workerDelete(memworker, classname, obj) (obj->~classname());(memworker(obj, 0))
-
-
-
-#define kq_core_memory_workerRefCountedBasicNew(memworker, classname) (kq_core_memory_workerNew(memworker,kq::core::memory::RefCounter,(memworker(0, sizeof(classname)),kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerFree, &memworker))))
-#define kq_core_memory_workerRefCountedClassNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, (__VA_ARGS__)), kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &memworker))))
 
 
 /*
@@ -832,11 +824,11 @@ public:
 
 
 	kq::core::memory::Pointer<LinkNode> createLinkNode(){		
-		return kq_core_memory_workerRefCountedNew(mem, LinkNode);
+		return kq_core_memory_workerRefCountedClassNew(mem, LinkNode);
 	};
 
 	kq::core::memory::Pointer<DataNode> createDataNode(){
-		return kq_core_memory_workerRefCountedNew(mem, DataNode);
+		return kq_core_memory_workerRefCountedClassNew(mem, DataNode);
 	};
 
 	DataQueue(kq::core::memory::MemoryWorker & worker){
@@ -858,8 +850,8 @@ public:
 	kq::core::memory::Pointer<LinkNode> m_pTail;
 
 	void push(kq::core::memory::Pointer<DataType> pData){
-		kq::core::memory::Pointer<LinkNode> m_pNewTail = kq_core_memory_workerEasyClassTypeRefCountedNew(mem, LinkNode);
-		kq::core::memory::Pointer<DataNode> m_pNewTailData = kq_core_memory_workerEasyClassTypeRefCountedNew(mem, DataNode);
+		kq::core::memory::Pointer<LinkNode> m_pNewTail = kq_core_memory_workerRefCountedClassNew(mem, LinkNode);
+		kq::core::memory::Pointer<DataNode> m_pNewTailData = kq_core_memory_workerRefCountedClassNew(mem, DataNode);
 
 		m_pNewTailData->m_pNext = m_pNewTail;
 		m_pNewTailData->m_pData = pData;
@@ -897,7 +889,7 @@ public:
 	};
 
 	kq::core::memory::Pointer<Viewer> createViewer(){
-		kq::core::memory::Pointer<Viewer> pRet = kq_core_memory_workerEasyClassTypeRefCountedNew(mem, Viewer);
+		kq::core::memory::Pointer<Viewer> pRet = kq_core_memory_workerRefCountedClassNew(mem, Viewer);
 		pRet->m_pTail = getTail();
 		return pRet;
 	};
@@ -910,47 +902,49 @@ struct sz{
 
 int main(int /*argc*/, char **){
 
-	BitBox_16x16::test();
-
-	kq::core::memory::MemoryWorker mem0;
-	kq::core::memory::StandardLibraryMemoryAllocator a;
-	a.getMemoryWorker(mem0);
-
-	kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);
 	
 
-	kq::core::memory::MemoryWorker mem;
-	pPooledAllocator->getMemoryWorker(mem);
-
-	kq::core::memory::Pointer<int[64]> psz = 0;
-	psz = kq_core_memory_workerRefCountedBasicNew(mem, int[64]);	
-	(*psz)[3] = 0;
-
-
-	/*
-	kq::core::memory::Pointer<DataQueue<sz>> pQ = kq_core_memory_workerEasyClassTypeRefCountedNew(mem, DataQueue<sz>, (mem));
-	kq::core::memory::Pointer<DataQueue<sz>::Viewer> pViewer = pQ->createViewer();
-
 	{
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
+		kq::core::memory::MemoryWorker mem0;
+		kq::core::memory::StandardLibraryMemoryAllocator a;
+		a.getMemoryWorker(mem0);
+
+		kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);
+		
+
+		kq::core::memory::MemoryWorker mem;
+		pPooledAllocator->getMemoryWorker(mem);
+
+		kq::core::memory::Pointer<int[64]> psz = 0;
+		psz = kq_core_memory_workerRefCountedBasicNew(mem, int[64]);	
+		(*psz)[3] = 0;
+
+
+		
+		kq::core::memory::Pointer<DataQueue<sz>> pQ = kq_core_memory_workerRefCountedClassNew(mem, DataQueue<sz>, (mem));
+		kq::core::memory::Pointer<DataQueue<sz>::Viewer> pViewer = pQ->createViewer();
+
+		{
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+		}
+		//q.createViewer();
+		{
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+			pQ->push(kq_core_memory_workerRefCountedBasicNew(mem, sz));
+		}
+
 	}
-	//q.createViewer();
-	{
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-		pQ->push(kq_core_memory_workerEasyBasicTypeRefCountedNew(mem, sz));
-	}
 
-	*/
-
-	//mem(0, 100);
-
+	BitBox_16x16::test();
+	
+	
 	//WinMain(0,0,0,0);
 
 }
@@ -1010,251 +1004,262 @@ void * remoteCall(void * pStackTop, void * (*pfnFunction)(void *), void * pData)
 
 #pragma warning(pop)
 
-//
-//int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
-//
-//
-//	if(!GetStdHandle(STD_OUTPUT_HANDLE)){
-//		if(AttachConsole(ATTACH_PARENT_PROCESS) == FALSE){
-//			if(AllocConsole() == FALSE){
-//				return -1;
-//				
-//			}
-//		}	
-//	}
-//
-//	WindowsConsoleOutputStream console;
-//	WindowsConsoleOutputStream * pConsole = &console;
-//	pConsole->output("Console Init...\tAttached.\n");
-//
-//	kq::core::ui32 nBytes = 1024 * 10;
-//	char * pStack = (char *)malloc(nBytes);
-//	if(remoteCall(pStack + nBytes, functionTest, pConsole) == pConsole){
-//		pConsole->output("Remote Call Test Successfull\n");
-//	}
-//	
-//
-//	kq::core::memory::Pointer<ITicker> pTicker = new kq::core::memory::RefCounter(new WindowsAPITicker());
-//	kq::core::memory::Pointer<IStopWatch> pStopWatch = new kq::core::memory::RefCounter(new StopWatch( pTicker ));
-//	kq::core::memory::Pointer<IClock> pClock(new kq::core::memory::RefCounter(new Clock(80, new kq::core::memory::RefCounter(new StopWatch( pTicker )), new kq::core::memory::RefCounter(new WindowsAPISleeper))));
-//
-//
-//	DISPLAY_DEVICE dd = {0};
-//	dd.cb = sizeof(dd);
-//	DEVMODE dm = {0};
-//	dm.dmSize = sizeof(dm);
-//
-//	DEVMODE dmCurrent = {0};
-//	dmCurrent.dmSize = sizeof(dmCurrent);
-//
-//	int iDisplayDevice = 0;
-//
-//	
-//	DWORD dwCheck = DISPLAY_DEVICE_ACTIVE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP | DISPLAY_DEVICE_PRIMARY_DEVICE;	
-//	
-//	bool bRequestedResolutionSet = false;
-//
-//	while( !bRequestedResolutionSet && EnumDisplayDevices(0, iDisplayDevice, &dd, 0) ){
-//
-//		EnumDisplaySettings(dd.DeviceName, ENUM_CURRENT_SETTINGS, &dmCurrent);
-//		
-//		//Search of displays which are relevant
-//		if((dd.StateFlags & dwCheck) == dwCheck){
-//
-//			pConsole->output(L"Using Display...\t%s.\n", dd.DeviceString);			
-//
-//			int iDevmode = 0;
-//			while(EnumDisplaySettings(dd.DeviceName, iDevmode, &dm)){
-//				
-//				if(dm.dmBitsPerPel >= 32){
-//					if(
-//						dm.dmPelsWidth == dmCurrent.dmPelsWidth
-//						&& dm.dmPelsHeight == dmCurrent.dmPelsHeight
-//						&& dm.dmBitsPerPel == dmCurrent.dmBitsPerPel
-//						&& dm.dmDisplayFrequency == dmCurrent.dmDisplayFrequency
-//					){
-//
-//						//pConsole->output(L"***", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency);
-//						pConsole->output(L"Using Current Resolution...\t%4dx%4d %2dbits @ %2dHz\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency);					
-//						pConsole->output("Switching To FullScreen...\t");
-//						if((ChangeDisplaySettingsEx(dd.DeviceName, &dmCurrent, 0, CDS_FULLSCREEN, 0) == DISP_CHANGE_SUCCESSFUL)){
-//							bRequestedResolutionSet = true;
-//							pConsole->output("Done.\n");
-//							break;
-//						}else{
-//							pConsole->output("Failed!\n");
-//						}
-//					}										
-//				}
-//				iDevmode++;
-//			}
-//		}
-//		iDisplayDevice++;
-//	}			
-//	
-//
-//	if(bRequestedResolutionSet){
-//		WNDCLASSEX wc;
-//		wc.cbSize = sizeof(wc);
-//		wc.style = CS_OWNDC;
-//		wc.lpfnWndProc = wndproc;
-//		wc.cbClsExtra = 0;
-//		wc.cbWndExtra = 0;
-//		wc.hInstance = hInstance;
-//		wc.hIcon = 0;
-//		wc.hCursor = LoadCursor(0, IDC_APPSTARTING);
-//		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-//		wc.lpszMenuName = 0;
-//		wc.lpszClassName = L"KQWindowClass";
-//		wc.hIconSm = 0;
-//
-//
-//		pConsole->output(L"Registering Class For main window(%s)...\t", wc.lpszClassName);
-//		ATOM regResult = RegisterClassEx(&wc);
-//		if(regResult){
-//
-//
-//			LPWSTR lpszWindowName = L"Game Window";
-//			pConsole->output(L"%d\nCreating Window(%s::%s)...", regResult, wc.lpszClassName, lpszWindowName);
-//
-//			HWND hMainWindow = CreateWindowEx(WS_EX_APPWINDOW, wc.lpszClassName, lpszWindowName, WS_POPUP, 0, 0, dmCurrent.dmPelsWidth, dmCurrent.dmPelsHeight, 0, 0, hInstance, 0);
-//			if(hMainWindow){
-//				pConsole->output("%x\nGetting Device Context...\t", hMainWindow);
-//				HDC hMainWindowDC = GetDC(hMainWindow);
-//				if(hMainWindowDC){
-//					pConsole->output("%x\n", hMainWindowDC);
-//					PIXELFORMATDESCRIPTOR pfd = {0};
-//					pfd.nSize = sizeof(pfd);
-//					pfd.nVersion = 1;
-//					pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-//					pfd.iPixelType = PFD_TYPE_RGBA;
-//					pfd.cColorBits = 24;
-//					pfd.cDepthBits = 16;
-//					pfd.iLayerType = PFD_MAIN_PLANE;
-//
-//					pConsole->output("Trying to set pixel format...\t");
-//
-//					int iPixelFormat = ChoosePixelFormat(hMainWindowDC, &pfd);
-//					if(iPixelFormat && (SetPixelFormat(hMainWindowDC, iPixelFormat, &pfd) == TRUE)){
-//						pConsole->output("Set\nCreating OpenGL Context...\t");
-//						HGLRC hGL = wglCreateContext(hMainWindowDC);
-//						if(hGL){
-//							pConsole->output("%x\n", hGL);
-//							HGLRC hGLOld = wglGetCurrentContext();
-//							if((wglMakeCurrent(hMainWindowDC, hGL) == TRUE)){
-//								MSG msg;
-//								bool bContinue = true;
-//								pConsole->output("Showing Main Window...\nEntering Game loop...\n");
-//
-//								ShowWindow(hMainWindow, SW_MAXIMIZE);
-//
-//								kq::core::memory::Pointer<SceneGraphNode> pRoot;
-//
-//								LARGE_INTEGER iCountOld;
-//								iCountOld.QuadPart = 0;
-//								while(bContinue){
-//									BOOL bMsg = PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
-//									if(bMsg == TRUE){
-//										switch(msg.message){
-//											case WM_QUIT:
-//												pConsole->output("Got Quit Message...\n");
-//												bContinue = false;					
-//												break;
-//											default:
-//												TranslateMessage(&msg);
-//												DispatchMessage(&msg);
-//												break;
-//										};
-//
-//										//Go back and process all messages in queue before proceeding
-//										continue;
-//									}
-//
-//									
-//									{
-//
-//										
-//
-//										if(!pRoot){
-//											pRoot = (new kq::core::memory::RefCounter (new SceneGraphNode_Root));
-//
-//											kq::core::memory::Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new kq::core::memory::RefCounter ( new SceneGraphNode_OpenGL_First);
-//
-//											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model);
-//											pModel->pModel = new kq::core::memory::RefCounter ( new Model);
-//											pModel->pModel->tabF = TriangleModel.tabF;
-//											pModel->pModel->tabV = TriangleModel.tabV;
-//
-//											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Transform);
-//											
-//
-//											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model);
-//											pModel2->pModel = new kq::core::memory::RefCounter ( new Model);
-//											pModel2->pModel->tabF = TriangleModel.tabF;
-//											pModel2->pModel->tabV = TriangleModel.tabV;
-//
-//											pTransform->m_pFirstChild = pModel2.castStatic<SceneGraphNode>();
-//
-//											pOpenGL->m_pFirstChild = pTransform.castStatic<SceneGraphNode>();
-//											pTransform->m_pNextSibling = pModel.castStatic<SceneGraphNode>();
-//
-//
-//											pRoot->m_pFirstChild = pOpenGL.castStatic<SceneGraphNode>();
-//
-//											pStopWatch->reset();
-//											
-//										}
-//
-//										
-//										double dSecondsSinceLastReset = (double)pStopWatch->getTickCount() / (double)pStopWatch->getTicksPerSecond();
-//										pStopWatch->reset();
-//
-//										pRoot->operate(SceneGraphNode::otMove, dSecondsSinceLastReset);
-//										pRoot->operate(SceneGraphNode::otRender);
-//
-//
-//										
-//									}
-//
-//									SwapBuffers(hMainWindowDC);
-//									pClock->waitTillNextCycle();								
-//								}
-//
-//								wglMakeCurrent(hMainWindowDC, hGLOld);
-//							}else{
-//								pConsole->output("Failed to set current context");
-//							}
-//							wglDeleteContext(hGL);
-//						}else{
-//							pConsole->output("Failed to create OpenGl Context");
-//						}
-//
-//					}else{
-//						pConsole->output("Failed to fix pixel format\n");
-//					}
-//
-//					ReleaseDC(hMainWindow, hMainWindowDC);
-//				}else{
-//					pConsole->output("Failed to get DC\n");
-//				}
-//
-//				DestroyWindow(hMainWindow);
-//			}else{
-//				pConsole->output("Failed to Create window\n");
-//			}
-//
-//			UnregisterClass(wc.lpszClassName, hInstance);
-//		}else{
-//			pConsole->output("Failed to Register Class\n");
-//		}
-//	}else{
-//		pConsole->output("Couldnot Set Requested Resolution\n");
-//	}
-//
-//	pConsole->output("Restoring Default Display Settings\n");
-//	ChangeDisplaySettingsEx(0, 0, 0, 0, 0);
-//
-//	pConsole->output("Detaching Console\n");
-//	FreeConsole();
-//	return 0;
-//}
+
+int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
+
+	kq::core::memory::MemoryWorker mem0;
+	kq::core::memory::StandardLibraryMemoryAllocator a;
+	a.getMemoryWorker(mem0);
+
+	kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);
+	
+	kq::core::memory::MemoryWorker mem;
+	pPooledAllocator->getMemoryWorker(mem);
+
+
+
+
+	if(!GetStdHandle(STD_OUTPUT_HANDLE)){
+		if(AttachConsole(ATTACH_PARENT_PROCESS) == FALSE){
+			if(AllocConsole() == FALSE){
+				return -1;
+				
+			}
+		}	
+	}
+
+	WindowsConsoleOutputStream console;
+	WindowsConsoleOutputStream * pConsole = &console;
+	pConsole->output("Console Init...\tAttached.\n");
+
+	kq::core::ui32 nBytes = 1024 * 10;
+	char * pStack = (char *)malloc(nBytes);
+	if(remoteCall(pStack + nBytes, functionTest, pConsole) == pConsole){
+		pConsole->output("Remote Call Test Successfull\n");
+	}
+	
+
+	kq::core::memory::Pointer<ITicker> pTicker = kq_core_memory_workerRefCountedClassNew(mem, WindowsAPITicker);
+	kq::core::memory::Pointer<IStopWatch> pStopWatch = kq_core_memory_workerRefCountedClassNew(mem, StopWatch, pTicker);
+	kq::core::memory::Pointer<IClock> pClock(kq_core_memory_workerRefCountedClassNew(mem, Clock, 80.0, kq_core_memory_workerRefCountedClassNew(mem, StopWatch, pTicker), kq_core_memory_workerRefCountedClassNew(mem, WindowsAPISleeper)));
+
+
+	DISPLAY_DEVICE dd = {0};
+	dd.cb = sizeof(dd);
+	DEVMODE dm = {0};
+	dm.dmSize = sizeof(dm);
+
+	DEVMODE dmCurrent = {0};
+	dmCurrent.dmSize = sizeof(dmCurrent);
+
+	int iDisplayDevice = 0;
+
+	
+	DWORD dwCheck = DISPLAY_DEVICE_ACTIVE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP | DISPLAY_DEVICE_PRIMARY_DEVICE;	
+	
+	bool bRequestedResolutionSet = false;
+
+	while( !bRequestedResolutionSet && EnumDisplayDevices(0, iDisplayDevice, &dd, 0) ){
+
+		EnumDisplaySettings(dd.DeviceName, ENUM_CURRENT_SETTINGS, &dmCurrent);
+		
+		//Search of displays which are relevant
+		if((dd.StateFlags & dwCheck) == dwCheck){
+
+			pConsole->output(L"Using Display...\t%s.\n", dd.DeviceString);			
+
+			int iDevmode = 0;
+			while(EnumDisplaySettings(dd.DeviceName, iDevmode, &dm)){
+				
+				if(dm.dmBitsPerPel >= 32){
+					if(
+						dm.dmPelsWidth == dmCurrent.dmPelsWidth
+						&& dm.dmPelsHeight == dmCurrent.dmPelsHeight
+						&& dm.dmBitsPerPel == dmCurrent.dmBitsPerPel
+						&& dm.dmDisplayFrequency == dmCurrent.dmDisplayFrequency
+					){
+
+						//pConsole->output(L"***", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency);
+						pConsole->output(L"Using Current Resolution...\t%4dx%4d %2dbits @ %2dHz\n", dm.dmPelsWidth, dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency);					
+						pConsole->output("Switching To FullScreen...\t");
+						if((ChangeDisplaySettingsEx(dd.DeviceName, &dmCurrent, 0, CDS_FULLSCREEN, 0) == DISP_CHANGE_SUCCESSFUL)){
+							bRequestedResolutionSet = true;
+							pConsole->output("Done.\n");
+							break;
+						}else{
+							pConsole->output("Failed!\n");
+						}
+					}										
+				}
+				iDevmode++;
+			}
+		}
+		iDisplayDevice++;
+	}			
+	
+
+	if(bRequestedResolutionSet){
+		WNDCLASSEX wc;
+		wc.cbSize = sizeof(wc);
+		wc.style = CS_OWNDC;
+		wc.lpfnWndProc = wndproc;
+		wc.cbClsExtra = 0;
+		wc.cbWndExtra = 0;
+		wc.hInstance = hInstance;
+		wc.hIcon = 0;
+		wc.hCursor = LoadCursor(0, IDC_APPSTARTING);
+		wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+		wc.lpszMenuName = 0;
+		wc.lpszClassName = L"KQWindowClass";
+		wc.hIconSm = 0;
+
+
+		pConsole->output(L"Registering Class For main window(%s)...\t", wc.lpszClassName);
+		ATOM regResult = RegisterClassEx(&wc);
+		if(regResult){
+
+
+			LPWSTR lpszWindowName = L"Game Window";
+			pConsole->output(L"%d\nCreating Window(%s::%s)...", regResult, wc.lpszClassName, lpszWindowName);
+
+			HWND hMainWindow = CreateWindowEx(WS_EX_APPWINDOW, wc.lpszClassName, lpszWindowName, WS_POPUP, 0, 0, dmCurrent.dmPelsWidth, dmCurrent.dmPelsHeight, 0, 0, hInstance, 0);
+			if(hMainWindow){
+				pConsole->output("%x\nGetting Device Context...\t", hMainWindow);
+				HDC hMainWindowDC = GetDC(hMainWindow);
+				if(hMainWindowDC){
+					pConsole->output("%x\n", hMainWindowDC);
+					PIXELFORMATDESCRIPTOR pfd = {0};
+					pfd.nSize = sizeof(pfd);
+					pfd.nVersion = 1;
+					pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+					pfd.iPixelType = PFD_TYPE_RGBA;
+					pfd.cColorBits = 24;
+					pfd.cDepthBits = 16;
+					pfd.iLayerType = PFD_MAIN_PLANE;
+
+					pConsole->output("Trying to set pixel format...\t");
+
+					int iPixelFormat = ChoosePixelFormat(hMainWindowDC, &pfd);
+					if(iPixelFormat && (SetPixelFormat(hMainWindowDC, iPixelFormat, &pfd) == TRUE)){
+						pConsole->output("Set\nCreating OpenGL Context...\t");
+						HGLRC hGL = wglCreateContext(hMainWindowDC);
+						if(hGL){
+							pConsole->output("%x\n", hGL);
+							HGLRC hGLOld = wglGetCurrentContext();
+							if((wglMakeCurrent(hMainWindowDC, hGL) == TRUE)){
+								MSG msg;
+								bool bContinue = true;
+								pConsole->output("Showing Main Window...\nEntering Game loop...\n");
+
+								ShowWindow(hMainWindow, SW_MAXIMIZE);
+
+								kq::core::memory::Pointer<SceneGraphNode> pRoot;
+
+								LARGE_INTEGER iCountOld;
+								iCountOld.QuadPart = 0;
+								while(bContinue){
+									BOOL bMsg = PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
+									if(bMsg == TRUE){
+										switch(msg.message){
+											case WM_QUIT:
+												pConsole->output("Got Quit Message...\n");
+												bContinue = false;					
+												break;
+											default:
+												TranslateMessage(&msg);
+												DispatchMessage(&msg);
+												break;
+										};
+
+										//Go back and process all messages in queue before proceeding
+										continue;
+									}
+
+									
+									{
+
+										
+
+										if(!pRoot){
+											pRoot = (new kq::core::memory::RefCounter (new SceneGraphNode_Root, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_Root>));
+
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new kq::core::memory::RefCounter ( new SceneGraphNode_OpenGL_First, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_First>);
+
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Model>);
+											pModel->pModel = new kq::core::memory::RefCounter ( new Model, kq::core::memory::DestructionWorkerFunc_delete<Model>);
+											pModel->pModel->tabF = TriangleModel.tabF;
+											pModel->pModel->tabV = TriangleModel.tabV;
+
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Transform, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Transform>);
+											
+
+											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Model>);
+											pModel2->pModel = new kq::core::memory::RefCounter ( new Model, kq::core::memory::DestructionWorkerFunc_delete<Model>);
+											pModel2->pModel->tabF = TriangleModel.tabF;
+											pModel2->pModel->tabV = TriangleModel.tabV;
+
+											pTransform->m_pFirstChild = pModel2.castStatic<SceneGraphNode>();
+
+											pOpenGL->m_pFirstChild = pTransform.castStatic<SceneGraphNode>();
+											pTransform->m_pNextSibling = pModel.castStatic<SceneGraphNode>();
+
+
+											pRoot->m_pFirstChild = pOpenGL.castStatic<SceneGraphNode>();
+
+											pStopWatch->reset();
+											
+										}
+
+										
+										double dSecondsSinceLastReset = (double)pStopWatch->getTickCount() / (double)pStopWatch->getTicksPerSecond();
+										pStopWatch->reset();
+
+										pRoot->operate(SceneGraphNode::otMove, dSecondsSinceLastReset);
+										pRoot->operate(SceneGraphNode::otRender);
+
+
+										
+									}
+
+									SwapBuffers(hMainWindowDC);
+									pClock->waitTillNextCycle();								
+								}
+
+								wglMakeCurrent(hMainWindowDC, hGLOld);
+							}else{
+								pConsole->output("Failed to set current context");
+							}
+							wglDeleteContext(hGL);
+						}else{
+							pConsole->output("Failed to create OpenGl Context");
+						}
+
+					}else{
+						pConsole->output("Failed to fix pixel format\n");
+					}
+
+					ReleaseDC(hMainWindow, hMainWindowDC);
+				}else{
+					pConsole->output("Failed to get DC\n");
+				}
+
+				DestroyWindow(hMainWindow);
+			}else{
+				pConsole->output("Failed to Create window\n");
+			}
+
+			UnregisterClass(wc.lpszClassName, hInstance);
+		}else{
+			pConsole->output("Failed to Register Class\n");
+		}
+	}else{
+		pConsole->output("Couldnot Set Requested Resolution\n");
+	}
+
+	pConsole->output("Restoring Default Display Settings\n");
+	ChangeDisplaySettingsEx(0, 0, 0, 0, 0);
+
+	pConsole->output("Detaching Console\n");
+	FreeConsole();
+	return 0;
+}

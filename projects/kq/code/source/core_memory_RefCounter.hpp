@@ -156,7 +156,7 @@ namespace kq{
 				}
 
 				operator bool (){
-					return m_pRefCounter->object != 0;
+					return m_pBufferedObject != 0;
 				}
 
 
@@ -203,16 +203,13 @@ namespace kq{
 										
 			};
 
-			/*
-			class ProxyNew{
-			public:
-				void * operator new(size_t nBytes, Pointer<MemoryWorker> pWorker);
-
-				void operator delete(void *);
-			};
-			*/
 		};
 	};
 };
+
+
+#define kq_core_memory_workerRefCountedBasicNew(memworker, classname) (kq_core_memory_workerNew(memworker,kq::core::memory::RefCounter,(memworker(0, sizeof(classname)),kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerFree, &memworker))))
+#define kq_core_memory_workerRefCountedClassNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, (__VA_ARGS__)), kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &memworker))))
+
 
 #endif

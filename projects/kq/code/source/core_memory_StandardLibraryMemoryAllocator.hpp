@@ -13,7 +13,7 @@ namespace kq{
 				static void * allocator(void * context, void * p, kq::core::ui64 n);
 			public:
 
-				//ui32 m_nBytesAllocated;
+				ui32 m_nBytesAllocated;
 
 				StandardLibraryMemoryAllocator();
 				~StandardLibraryMemoryAllocator();			
