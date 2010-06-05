@@ -9,11 +9,14 @@ namespace kq{
 	namespace core{
 		namespace memory{
 
+			
 			class StandardLibraryMemoryAllocator{
 				static void * allocator(void * context, void * p, kq::core::ui64 n);
+				
+				ui32 m_nBytesAllocated;
 			public:
 
-				ui32 m_nBytesAllocated;
+				ui32 getCurrentlyAllocatedByteCount();
 
 				StandardLibraryMemoryAllocator();
 				~StandardLibraryMemoryAllocator();			

@@ -121,7 +121,8 @@ namespace kq{
 					detach();
 				}
 
-				Pointer<t> & operator = (const Pointer<t> & oprand){
+				//We do not want to use a reference here, else "p = p->next" will fail when refcount of p == 1;
+				Pointer<t> & operator = (const Pointer<t> oprand){
 					if(m_pRefCounter->getObject() != oprand.m_pRefCounter->getObject()){
 						detach();
 						attach(oprand.m_pRefCounter);           
@@ -151,9 +152,11 @@ namespace kq{
 					return (t *)(m_pBufferedObject);
 				};
 
+				
 				t & operator *() const{
 					return *(m_pBufferedObject);
 				}
+				
 
 				operator bool (){
 					return m_pBufferedObject != 0;

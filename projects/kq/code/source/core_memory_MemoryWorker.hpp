@@ -13,7 +13,7 @@ namespace kq{
 					return (*getWorkerFunction())(getWorkerContext(), p, n);
 				};
 			};
-			
+
 		};
 
 	};

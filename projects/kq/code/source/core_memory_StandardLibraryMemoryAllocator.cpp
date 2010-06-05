@@ -10,8 +10,12 @@ StandardLibraryMemoryAllocator::StandardLibraryMemoryAllocator(){
 }
 
 StandardLibraryMemoryAllocator::~StandardLibraryMemoryAllocator(){
-	printf("%d Bytes Leaked\n", m_nBytesAllocated);
+	//printf("%d Bytes Leaked\n", m_nBytesAllocated);
 }
+
+ui32 StandardLibraryMemoryAllocator::getCurrentlyAllocatedByteCount(){
+	return m_nBytesAllocated;
+};
 
 void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 n){
 	context;
@@ -21,7 +25,7 @@ void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 
 	
 	if(p){
 		nBytes -= (ui32)_msize(p);
-		printf("(--,%p,%d)", p, (ui32)_msize(p));					
+		//printf("(--,%p,%d)", p, (ui32)_msize(p));					
 	}
 	
 
@@ -39,7 +43,7 @@ void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 
 	
 	if(pRet){
 		nBytes += (ui32)_msize(pRet);
-		printf("(++,%p,%d)", pRet, (ui32)_msize(pRet));			
+		//printf("(++,%p,%d)", pRet, (ui32)_msize(pRet));			
 	}
 
 
@@ -50,3 +54,4 @@ void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 
 void StandardLibraryMemoryAllocator::getMemoryWorker(MemoryWorker & MemoryWorker){
 	MemoryWorker.set(this, &(StandardLibraryMemoryAllocator::allocator));
 };
+

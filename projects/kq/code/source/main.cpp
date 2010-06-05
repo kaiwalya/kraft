@@ -290,11 +290,8 @@ struct SceneGraphNode_Root: public SceneGraphNode{
 					pTop->pNode = pTop->pNode->m_pNextSibling;
 					pTop->bProcessed = false;
 				}
-				
 			}
 		}
-		
-
 	}
 };
 
@@ -649,6 +646,8 @@ struct BitBox_16x16{
 };
 
 
+
+
 /*
 class Graph{
 public:
@@ -694,117 +693,6 @@ public:
 	i32 disconnect(NodeIDList *listSrc, NodeIDList *listDest);
 	i32 search(NodeIDList source, NodeIDList dest, NodeIDList * pOut);
 
-};
-*/
-
-namespace kq{
-	namespace flows{
-		namespace konnect{
-
-
-			typedef kq::core::ui64 ID;
-
-			class IStreamReader{
-			public:
-				virtual void readOpen(ID stream) = 0;
-				virtual bool readData(ID stream, ID & data) = 0;
-				virtual void readClose(ID stream) = 0;
-			};
-
-			class IStreamWriter{
-			public:
-				virtual void writeOpen(ID stream) = 0;
-				virtual void writeData(ID stream, ID data) = 0;
-				virtual void writeClose(ID stream) = 0;								
-			};
-
-			class INetwork;
-			
-			class IWorker{				
-			public:
-				virtual bool up(INetwork * pNetwork, IStreamWriter * pWriter) = 0;
-				virtual bool process(INetwork * pNetwork, IStreamWriter  * pWriter, IStreamReader * pReader) = 0;				
-				virtual bool down(INetwork * pNetwork, IStreamWriter * pWriter) = 0;
-			};
-
-			class INetwork{				
-				virtual bool addNode(kq::core::memory::Pointer<IWorker> pWorker) = 0;
-				virtual bool removeNode(kq::core::memory::Pointer<IWorker> pWorker) = 0;
-				virtual kq::core::ui64 rest(kq::core::ui64 nMicroSeconds);
-			};
-		};
-	};
-};
-
-
-class Network:public kq::flows::konnect::INetwork{
-
-	struct NodeInfo{
-	public:
-		kq::core::memory::Pointer<kq::flows::konnect::IWorker> pWorker;	
-	};
-	
-
-	static const ui32 nMaxNodes = 16;
-	NodeInfo info[nMaxNodes];
-	ui32 iNextEmptyNodeSlot;
-
-	kq::core::ui64 sleep(kq::core::ui64 nMicroSeconds){
-		return nMicroSeconds;
-	};
-
-	bool addNode(kq::core::memory::Pointer<kq::flows::konnect::IWorker> pWorker){
-		bool bRet = false;
-		if(iNextEmptyNodeSlot < nMaxNodes){
-			info[iNextEmptyNodeSlot].pWorker = 0;pWorker;
-			iNextEmptyNodeSlot++;
-			bRet= true;
-		}
-		return bRet;
-	};
-
-	bool removeNode(kq::core::memory::Pointer<kq::flows::konnect::IWorker> pWorker){
-		ui32 i;
-		bool bRet = false;
-		for(i = 0; i < iNextEmptyNodeSlot; i++){
-			if(info[i].pWorker == pWorker){
-				info[i].pWorker = 0;
-				bRet = true;
-				break;
-			}
-		}
-
-		return bRet;
-	};
-};
-
-
-class TestWorker:public kq::flows::konnect::IWorker{
-public:
-	bool up(kq::flows::konnect::INetwork * /*pNetwork*/, kq::flows::konnect::IStreamWriter * pWriter){
-		pWriter->writeOpen(0);
-	}
-
-	bool process(kq::flows::konnect::INetwork * /*pNetwork*/, kq::flows::konnect::IStreamWriter * pWriter, kq::flows::konnect::IStreamReader * /*pReader*/){
-		bool bTrue = true;
-		while(bTrue){
-			pWriter->writeData(0, 0);
-		}
-	}
-
-	bool down(kq::flows::konnect::INetwork * /*pNetwork*/, kq::flows::konnect::IStreamWriter * pWriter){
-		pWriter->writeClose(0);
-	}
-};
-
-/*
-namespace kq{
-	namespace flows{
-		namespace konnect{
-
-			kq::core::memory::Pointer<Network> m_pTest;
-		};
-	};
 };
 */
 
@@ -896,31 +784,23 @@ public:
 
 };
 
+
 struct sz{
-	int arr[64];
 };
 
-int main(int /*argc*/, char **){
 
-	
+int main(int /*argc*/, char **){
 
 	{
 		kq::core::memory::MemoryWorker mem0;
 		kq::core::memory::StandardLibraryMemoryAllocator a;
 		a.getMemoryWorker(mem0);
 
-		kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);
-		
-
+		kq::core::memory::Pointer<kq::core::memory::PooledMemoryAllocator> pPooledAllocator = kq_core_memory_workerRefCountedClassNew(mem0, kq::core::memory::PooledMemoryAllocator, mem0);		
 		kq::core::memory::MemoryWorker mem;
 		pPooledAllocator->getMemoryWorker(mem);
 
-		kq::core::memory::Pointer<int[64]> psz = 0;
-		psz = kq_core_memory_workerRefCountedBasicNew(mem, int[64]);	
-		(*psz)[3] = 0;
-
-
-		
+			
 		kq::core::memory::Pointer<DataQueue<sz>> pQ = kq_core_memory_workerRefCountedClassNew(mem, DataQueue<sz>, (mem));
 		kq::core::memory::Pointer<DataQueue<sz>::Viewer> pViewer = pQ->createViewer();
 
@@ -945,7 +825,7 @@ int main(int /*argc*/, char **){
 	BitBox_16x16::test();
 	
 	
-	//WinMain(0,0,0,0);
+	WinMain(0,0,0,0);
 
 }
 
@@ -1217,8 +1097,6 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 										pRoot->operate(SceneGraphNode::otMove, dSecondsSinceLastReset);
 										pRoot->operate(SceneGraphNode::otRender);
 
-
-										
 									}
 
 									SwapBuffers(hMainWindowDC);
