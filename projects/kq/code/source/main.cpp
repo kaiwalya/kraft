@@ -201,228 +201,6 @@ public:
 };
 
 
-struct VertexTable{
-	ui32 nVertices;
-	double (* m_pVertex)[3];
-};
-
-struct FaceTable{
-	ui32 nFaces;
-	ui32 (* m_pFace)[3];
-};
-
-
-
-struct SceneGraphNode{
-
-	kq::core::memory::Pointer<SceneGraphNode> m_pNextSibling;
-	kq::core::memory::Pointer<SceneGraphNode> m_pFirstChild;
-	
-	
-	enum OperationType{
-
-		
-		otNone = 0,
-		otMove = 1,
-		otRender = 2,
-		
-	};
-
-	virtual void operate(OperationType ot, ...){
-		ot;
-	}
-
-	virtual void postOperate(OperationType ot, ...){
-		ot;
-	}
-
-
-
-};
-
-
-struct Model{
-	VertexTable tabV;
-	FaceTable tabF;	
-};
-
-struct SceneGraphNode_Root: public SceneGraphNode{
-
-
-	struct StackEntry{
-		kq::core::memory::Pointer<StackEntry> pPrev;
-
-		bool bProcessed;
-		kq::core::memory::Pointer<SceneGraphNode> pNode;		
-
-	};
-
-
-	void operate(OperationType ot, ...){
-
-		
-		kq::core::memory::Pointer<StackEntry> pTop(new kq::core::memory::RefCounter( new StackEntry, kq::core::memory::DestructionWorkerFunc_delete<StackEntry>));
-		pTop->pNode = m_pFirstChild;
-		pTop->bProcessed = false;
-
-		
-			
-		while(pTop){
-			if(pTop->pNode){
-				pTop->pNode->operate(ot);
-								
-
-				//push child
-				kq::core::memory::Pointer<StackEntry> pNewTop(new kq::core::memory::RefCounter( new StackEntry, kq::core::memory::DestructionWorkerFunc_delete<StackEntry>));
-				pNewTop->pNode = pTop->pNode->m_pFirstChild;
-				pNewTop->pPrev = pTop;
-				pTop = pNewTop;
-			}else{
-				//Last child reached,
-
-				//pop child
-				pTop = pTop->pPrev;
-
-				//go to sibling
-				if(pTop){
-					//We can assume that if we pop, there is always a node if there is a valid top
-					pTop->pNode->postOperate(ot);
-					pTop->pNode = pTop->pNode->m_pNextSibling;
-					pTop->bProcessed = false;
-				}
-			}
-		}
-	}
-};
-
-struct SceneGraphNode_OpenGL_First: public SceneGraphNode{
-	
-	void render(){
-		glEnable (GL_BLEND);
-		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-
-	void operate(OperationType ot, ...){
-
-		switch(ot){
-			case otRender:
-				render();
-				break;
-		}
-
-	}
-};
-
-
-struct SceneGraphNode_OpenGL_Transform: public SceneGraphNode{
-
-	double d;
-
-	SceneGraphNode_OpenGL_Transform(){
-		d = 0.0;
-	}
-
-	
-	void beginRender(){
-		glPushMatrix();
-		
-		glRotated(360 * sin(d), 0, 0, 1);
-		glScaled(sin(3 * d), cos(7 *d), 0.0);
-		glTranslated(0.5 * cos(5 * d), 0.5 * sin(3 * d), 0.0);
-	}
-
-	void endRender(){
-		glPopMatrix();
-	}
-
-	void move(){		
-		d = d + 0.01;
-	}
-
-	void operate(OperationType ot, ...){
-
-		switch(ot){
-			case otRender:
-				beginRender();
-				break;			
-			case otMove:
-				move();
-				break;
-		}
-
-	}
-
-	void postOperate(OperationType ot, ...){
-
-		switch(ot){
-			case otRender:				
-				endRender();
-				break;
-		}
-
-	}
-};
-
-
-struct SceneGraphNode_OpenGL_Model:SceneGraphNode{
-
-	kq::core::memory::Pointer<Model> pModel;
-
-	void render(){
-		VertexTable &tabV = pModel->tabV;
-		FaceTable &tabF = pModel->tabF;
-
-		
-
-		ui32 iFace, nFaces;
-		nFaces = tabF.nFaces;
-
-
-	
-		ui32 (*pFace)[3] = tabF.m_pFace;
-		double (*pVertex)[3] = tabV.m_pVertex;
-
-		glBegin(GL_TRIANGLES);
-		for(iFace = 0; iFace < nFaces; iFace++){																								
-
-			glColor4d(1, 0, 0, 0.6);
-			glVertex3dv(pVertex[pFace[0][0]]);
-			glColor4d(0, 1, 0, 0.6);
-			glVertex3dv(pVertex[pFace[0][1]]);
-			glColor4d(0, 0, 1, 0.6);
-			glVertex3dv(pVertex[pFace[0][2]]);
-
-			
-			pFace++;
-		}
-		glEnd();
-		
-
-
-	}
-
-	void operate(OperationType ot, ...){
-
-		switch(ot){
-			case otRender:
-				render();
-				break;
-		}
-
-	}
-};
-
-
-
-double TriangleModelVertexTableVertexData[3][3] = {{0, 0, 0}, {0.5, 0, 0}, {0, 0.5, 0}};
-ui32 TriangleModelVertexTableVertexCount = sizeof(TriangleModelVertexTableVertexData)/sizeof(TriangleModelVertexTableVertexData[0]);
-
-ui32 TriangleModelFaceTableFaceData[1][3] = {0, 1, 2};
-ui32 TriangleModelFaceTableFaceCount = sizeof(TriangleModelFaceTableFaceData)/sizeof(TriangleModelFaceTableFaceData[0]);
-
-Model TriangleModel = {{TriangleModelVertexTableVertexCount, TriangleModelVertexTableVertexData}, {TriangleModelFaceTableFaceCount, TriangleModelFaceTableFaceData}};
-
 LRESULT WINAPI wndproc(HWND h, UINT m, WPARAM w, LPARAM l){
 	LRESULT lRet = 0;	
 	switch(m){
@@ -885,6 +663,129 @@ void * remoteCall(void * pStackTop, void * (*pfnFunction)(void *), void * pData)
 #pragma warning(pop)
 
 
+class Texture{
+public:
+
+	struct Pixel_RGBA{
+		GLubyte r;
+		GLubyte g;
+		GLubyte b;
+		GLubyte a;
+	};
+
+	class Buffer{
+	public:
+		GLint width;
+		GLint height;
+		Pixel_RGBA * address;
+		kq::core::memory::MemoryWorker mem;
+
+		Buffer(kq::core::memory::MemoryWorker worker, GLint w, GLint h):mem(worker), width(w), height(h){		
+			address = (Pixel_RGBA *)mem(0, sizeof(address[0]) * width * height);
+		}
+
+		~Buffer(){
+			mem(address, 0);
+		}
+	};
+
+	kq::core::memory::Pointer<Buffer> m_pBuffer;
+
+	GLuint m_texCam;
+
+	Texture(){
+		glGenTextures(1, &m_texCam);
+		glBindTexture(GL_TEXTURE_2D, m_texCam);
+		//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_videoBuffer.width, m_videoBuffer.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_videoBuffer.address);
+
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
+	}
+
+	~Texture(){
+		glDeleteTextures(1, &m_texCam);
+		m_texCam = 0;
+	}
+
+	void move(double dTime){
+		dTime;
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_pBuffer->width, m_pBuffer->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pBuffer->address);
+	}
+
+	void render(){
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		float fSize = 1.0;
+		float fAspect = 1 / 1280.0 * 720.0;
+		glBegin(GL_QUADS);
+
+		glColor4d(1, 1, 1, 1);
+		glBindTexture(GL_TEXTURE_2D, m_texCam);
+		glTexCoord2d(1, 0); glVertex3d(-fSize * fAspect, fSize, 1.0);
+		glTexCoord2d(0, 0); glVertex3d(fSize*fAspect, fSize, 1.0);
+		glTexCoord2d(0, 1); glVertex3d(fSize*fAspect, -fSize, 1.0);
+		glTexCoord2d(1, 1); glVertex3d(-fSize*fAspect, -fSize, 1.0);
+
+
+		glEnd();
+
+
+	}
+};
+
+
+class SineTable{
+
+
+	kq::core::memory::Pointer<float> ptr;
+	kq::core::ui32 m_nVals;
+	float * m_pVals;
+
+	static const float pi;
+	static const float twopi;
+	static const float pibytwo;
+
+public:
+	SineTable(){
+		m_nVals = 0;
+		m_pVals = 0;
+	}
+
+	void build(kq::core::memory::MemoryWorker & mem, kq::core::ui32 nVals){
+		ptr = 0;
+		m_pVals = 0;
+		m_nVals = 0;
+
+		ptr = kq_core_memory_workerRefCountedMalloc(mem, sizeof(float) * nVals);
+		if(ptr){
+			m_nVals = nVals;
+			m_pVals = ptr.operator ->();
+
+			kq::core::ui32 i = 0;
+
+			while(i < m_nVals){
+				float di = twopi * i / m_nVals;
+				m_pVals[i] = ::sin(di);
+				i++;
+			}
+		}
+	}
+
+	float sin(float d){
+		return m_pVals[((kq::core::ui32)(d * m_nVals + 0.5))%m_nVals];
+	}
+
+	float cos(float d){
+		return sin(d + pibytwo);
+	}
+};
+
+const float SineTable::pi = 3.14159265358979323846f;
+const float SineTable::twopi = 2.0f * pi;
+const float SineTable::pibytwo = pi/2.0f;
+
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
 
 	kq::core::memory::MemoryWorker mem0;
@@ -1033,11 +934,24 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 								ShowWindow(hMainWindow, SW_MAXIMIZE);
 
-								kq::core::memory::Pointer<SceneGraphNode> pRoot;
+								
+								glEnable(GL_TEXTURE_2D);
+								Texture t;
+								t.m_pBuffer = kq_core_memory_workerRefCountedClassNew(mem, Texture::Buffer, mem, dmCurrent.dmPelsWidth, dmCurrent.dmPelsHeight);
+								
+								
+								double dTime = 0.0;
+								pStopWatch->reset();
+
+								SineTable sinTable;
+								sinTable.build(mem, 256);
+
 
 								LARGE_INTEGER iCountOld;
 								iCountOld.QuadPart = 0;
 								while(bContinue){
+
+									//Process Local Messages
 									BOOL bMsg = PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
 									if(bMsg == TRUE){
 										switch(msg.message){
@@ -1056,47 +970,62 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 									}
 
 									
-									{
-
-										
-
-										if(!pRoot){
-											pRoot = (new kq::core::memory::RefCounter (new SceneGraphNode_Root, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_Root>));
-
-											kq::core::memory::Pointer<SceneGraphNode_OpenGL_First> pOpenGL = new kq::core::memory::RefCounter ( new SceneGraphNode_OpenGL_First, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_First>);
-
-											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Model>);
-											pModel->pModel = new kq::core::memory::RefCounter ( new Model, kq::core::memory::DestructionWorkerFunc_delete<Model>);
-											pModel->pModel->tabF = TriangleModel.tabF;
-											pModel->pModel->tabV = TriangleModel.tabV;
-
-											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Transform> pTransform = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Transform, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Transform>);
-											
-
-											kq::core::memory::Pointer<SceneGraphNode_OpenGL_Model> pModel2 = new kq::core::memory::RefCounter (new SceneGraphNode_OpenGL_Model, kq::core::memory::DestructionWorkerFunc_delete<SceneGraphNode_OpenGL_Model>);
-											pModel2->pModel = new kq::core::memory::RefCounter ( new Model, kq::core::memory::DestructionWorkerFunc_delete<Model>);
-											pModel2->pModel->tabF = TriangleModel.tabF;
-											pModel2->pModel->tabV = TriangleModel.tabV;
-
-											pTransform->m_pFirstChild = pModel2.castStatic<SceneGraphNode>();
-
-											pOpenGL->m_pFirstChild = pTransform.castStatic<SceneGraphNode>();
-											pTransform->m_pNextSibling = pModel.castStatic<SceneGraphNode>();
-
-
-											pRoot->m_pFirstChild = pOpenGL.castStatic<SceneGraphNode>();
-
-											pStopWatch->reset();
-											
-										}
-
-										
+									//Move the world
+									{																														
 										double dSecondsSinceLastReset = (double)pStopWatch->getTickCount() / (double)pStopWatch->getTicksPerSecond();
 										pStopWatch->reset();
+										dTime += dSecondsSinceLastReset;
 
-										pRoot->operate(SceneGraphNode::otMove, dSecondsSinceLastReset);
-										pRoot->operate(SceneGraphNode::otRender);
+										
+										
+										{
+											kq::core::memory::Pointer<Texture::Buffer> pBuffer = t.m_pBuffer;
+											Texture::Pixel_RGBA * first = pBuffer->address;
+											Texture::Pixel_RGBA * current = first;
 
+											GLint i, n, w,h, x, y;
+											//for(x = 0; x < pBuffer->width; x++){
+											//	for(y = 0; y < pBuffer->height; y++){
+											{
+												i = 0;
+												w = pBuffer->width;
+												h = pBuffer->height;
+												n = w * h;
+
+												double t = 1 + sinTable.sin(0.75 + dTime * 0.1 * dTime * 0.1);
+												t *= 0.5;
+												
+
+
+												//memset(first, 0, sizeof(*first) * n);
+												while(i < n)
+												{
+													x = i % w;
+													y = i / w;
+
+													//float s = (sinTable.sin(0.75 + 1.0 * x / w * y / h + t) + 1) * 0.5;s;
+													//float c = (sinTable.cos(0.75 + 1.0 * x / w * y / h - t) + 1) * 0.5;c;
+													
+													current->r = (GLubyte)(255.0f * (w-x) / w * (h-y) / h * t + 0.5);
+													current->g = (GLubyte)(255.0f * (w-x) / w * y / h * t + 0.5);
+													current->b = (GLubyte)(255.0f * x / w * y / h * t + 0.5);
+													current->a = 0;
+
+													current++;
+													i++;
+
+
+												}												
+											}
+
+										}
+
+										t.move(dSecondsSinceLastReset);
+									}
+
+									//Render the world
+									{
+										t.render();
 									}
 
 									SwapBuffers(hMainWindowDC);

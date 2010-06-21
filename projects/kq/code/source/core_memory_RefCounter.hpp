@@ -211,6 +211,7 @@ namespace kq{
 };
 
 
+#define kq_core_memory_workerRefCountedMalloc(memworker, size) (kq_core_memory_workerNew(memworker,kq::core::memory::RefCounter,(memworker(0, size),kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerFree, &memworker))))
 #define kq_core_memory_workerRefCountedBasicNew(memworker, classname) (kq_core_memory_workerNew(memworker,kq::core::memory::RefCounter,(memworker(0, sizeof(classname)),kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerFree, &memworker))))
 #define kq_core_memory_workerRefCountedClassNew(memworker, classname, ...) (kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, (__VA_ARGS__)), kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &memworker))))
 
