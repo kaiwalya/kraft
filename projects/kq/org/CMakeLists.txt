@@ -20,8 +20,8 @@ ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
 #Code Generation
 IF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
-	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} /MT")
-	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} /MTd")
+	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
 
@@ -45,9 +45,13 @@ add_subdirectory("libKQCore")
 set(prjCopyProtect "kqCopyProtect")
 add_subdirectory("copyprotect")
 
+#build Klarity
+set(prjKlarity "kqKlarity")
+add_subdirectory("klarity")
 
-add_executable("kq" "${kq_source}main.cpp")
-add_dependencies("kq" "libKQCore")
 
-target_link_libraries(kq "libKQCore" opengl32 winmm Ws2_32 ../libs/libxml2/lib/libxml2 ../libs/iconv/lib/iconv ../libs/zlib/lib/zdll)
+#add_executable("kq" "${kq_source}main.cpp")
+#add_dependencies("kq" "libKQCore")
+
+#target_link_libraries(kq "libKQCore" opengl32 winmm Ws2_32 ../libs/libxml2/lib/libxml2 ../libs/iconv/lib/iconv ../libs/zlib/lib/zdll)
 
