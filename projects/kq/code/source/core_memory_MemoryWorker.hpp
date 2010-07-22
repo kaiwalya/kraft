@@ -3,6 +3,7 @@
 
 #include "core_IntegerTypes.hpp"
 #include "core_Worker.hpp"
+#include <new>
 
 namespace kq{
 	namespace core{
@@ -21,6 +22,7 @@ namespace kq{
 
 #define kq_core_memory_workerNew(memworker, classname, ...) (new (memworker(0, sizeof(classname))) classname __VA_ARGS__)
 #define kq_core_memory_workerDelete(memworker, classname, obj) (obj->~classname());(memworker(obj, 0))
+
 
 
 #endif

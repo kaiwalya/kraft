@@ -18,19 +18,36 @@ IF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
    ENDIF(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
 ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
+#Code Generation
+IF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
+	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} /MT")
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} /MTd")
+ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
 
-file(GLOB_RECURSE groupKQ RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/*.[c,h]??" "../code/source/*.[c,h]")
-source_group("" FILES ${groupKQ})
+set(kq_root "${CMAKE_CURRENT_SOURCE_DIR}/../")
+set(kq_code "${kq_root}code/")
+set(kq_source "${kq_code}source/")
+set(kq_include "${kq_code}include/")
 
-file(GLOB_RECURSE groupKQCore RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/core*.[c,h]??" "../code/source/core*.[c,h]")
-source_group(core FILES ${groupKQCore})
 
-file(GLOB_RECURSE groupKQFlows RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "../code/source/flows*.[c,h]??" "../code/source/flows*.[c,h]")
-source_group(flows FILES ${groupKQFlows})
+include_directories("${kq_include}" "../libs/libxml2/include" "../libs/iconv/include" "../libs/zlib/include")
 
-#include_directories("../code/include")
+#file(GLOB_RECURSE project_libKQCore_source RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${kq_source}core*.[c,h]??" "${kq_source}/core*.[c,h]")
+#source_group(core FILES ${project_libKQCore_source})
 
-add_executable("kq" ${groupKQ})
 
-target_link_libraries(kq opengl32)
+#build Core
+set(prjCore "libKQCore")
+add_subdirectory("libKQCore")
+
+#build CopyProtect
+set(prjCopyProtect "kqCopyProtect")
+add_subdirectory("copyprotect")
+
+
+add_executable("kq" "${kq_source}main.cpp")
+add_dependencies("kq" "libKQCore")
+
+target_link_libraries(kq "libKQCore" opengl32 winmm Ws2_32 ../libs/libxml2/lib/libxml2 ../libs/iconv/lib/iconv ../libs/zlib/lib/zdll)
+

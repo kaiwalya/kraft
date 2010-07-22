@@ -566,6 +566,249 @@ public:
 struct sz{
 };
 
+namespace tetris{
+
+	typedef kq::core::ui32 Color;
+
+	struct FilledCell{
+		Color color;
+	};
+
+	struct EmptyCell{
+	};
+
+	struct Cell{
+		bool bEmpty;
+		union{
+			FilledCell fc;
+			EmptyCell ec;
+		};
+	};
+
+	struct Shape{
+		kq::core::ui32 size;
+		bool data[1];
+	};
+
+	struct ShapeFactory{
+
+		kq::core::memory::MemoryWorker mem;
+		ShapeFactory(kq::core::memory::MemoryWorker worker):mem(worker){};
+		~ShapeFactory(){down();}
+
+		kq::core::ui32 m_nShapes;
+		struct Shape{
+			kq::core::memory::Pointer<tetris::Shape> pEnternalShape;
+			kq::core::memory::Pointer<Shape> pNext;
+		};
+
+		kq::core::memory::Pointer<Shape> m_pFirstShape;
+
+
+		kq::core::memory::Pointer<Shape> getRandomShape(){
+			return m_pFirstShape;
+		};
+
+		bool up(){
+			return true;
+		}
+
+		void down(){
+
+		}
+
+		bool addShape(kq::core::memory::Pointer<tetris::Shape> pShape){
+			kq::core::memory::Pointer<Shape> p = kq_core_memory_workerRefCountedClassNew(mem, Shape);
+			p->pEnternalShape = pShape;
+			
+			if(m_pFirstShape){
+				p->pNext = m_pFirstShape->pNext;
+				m_pFirstShape->pNext = p;
+			}else{
+				p->pNext = 0;
+				m_pFirstShape = p;
+			};
+		}
+	};
+
+	struct Block{
+		kq::core::memory::Pointer<Shape> pShape;
+		enum Rotation{
+			rotNormal = 0,
+			rotOnce,
+			rotTwice,
+			rotThrice,
+			rotMax,
+		};
+
+		Color color;
+	};
+
+	struct Grid{
+		
+		kq::core::ui32 width;
+		kq::core::ui32 height;
+		kq::core::memory::Pointer<Cell[1]> pArrCells;
+	};
+	
+	struct GameState{
+		
+		kq::core::memory::MemoryWorker mem;
+		Grid grid;
+		
+		GameState(kq::core::memory::MemoryWorker worker):mem(worker){};
+		~GameState(){down();}
+
+		bool up(kq::core::ui32 width, kq::core::ui32 height){
+			grid.pArrCells = kq_core_memory_workerRefCountedMalloc(mem, sizeof(Cell) * width * height);
+			if(grid.pArrCells){
+				grid.width = width;
+				grid.height = height;
+
+				return true;
+			}
+			else{
+				return false;
+			};
+		};
+
+		void down(){
+			grid.pArrCells = 0;
+			grid.width = 0;
+			grid.height = 0;
+		};
+
+
+	};
+
+	struct Game{
+		kq::core::memory::MemoryWorker mem;
+		kq::core::memory::Pointer<GameState> pState;
+		kq::core::memory::Pointer<ShapeFactory> pShapeFactory;
+
+		enum States{
+			stWaiting,
+		};
+
+		kq::core::ui64 timeSinceStateChange;
+
+		Game(kq::core::memory::MemoryWorker worker):mem(worker){down();}
+		~Game(){down();}
+
+		bool up(){
+			kq::core::memory::Pointer<GameState> pState = kq_core_memory_workerRefCountedClassNew(mem, GameState, mem);
+			if(pState){			
+				if(pState->up(10,20)){
+					kq::core::memory::Pointer<ShapeFactory>pShapeFactory = kq_core_memory_workerRefCountedClassNew(mem, ShapeFactory, mem);
+					if(pShapeFactory){
+						if(pShapeFactory->up()){
+							Shape s;
+							s.size = 1;
+							s.data[0] = true;
+
+							this->pShapeFactory = pShapeFactory;
+							this->pState = pState;
+
+							movefn = &Game::realMove;
+							renderfn = &Game::realRender;
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+
+		void down(){
+			if(pState){
+				pState->down();
+				pState = 0;
+			}
+			
+			if(pShapeFactory){
+				pShapeFactory->down();
+				pShapeFactory = 0;
+			}
+
+			movefn = &Game::dummyMove;
+			renderfn = &Game::dummyRender;
+
+		}
+
+		void (Game::*movefn)(double dDeltaSecs);
+		void move(double dDeltaSecs){
+			(this->*movefn)(dDeltaSecs);
+		}
+
+		void dummyMove(double dDeltaSecs){
+			dDeltaSecs = 0;
+		}
+
+		void realMove(double dDeltaSecs){
+			dDeltaSecs = 0;
+		};
+
+		void (Game::*renderfn)();
+
+		void render(){
+			(this->*renderfn)();
+		}
+
+		void dummyRender(){
+		}
+
+		void realRender(){
+			
+			//Render Grid
+			
+			kq::core::ui32 x,y;
+			kq::core::ui32 nx, ny;
+			nx = pState->grid.width;
+			ny = pState->grid.height;
+			for(x = 0; x < nx; x++){
+				glBegin(GL_LINES);
+
+				glVertex2d((float)x/nx * 2.0 - 1.0, -1.0);
+				glVertex2d((float)x/nx * 2.0 - 1.0, +1.0);
+
+				glEnd();
+			}
+
+			for(y = 0; y < ny; y++){
+				glBegin(GL_LINES);
+
+				glVertex2d(- 1.0, (float)y/ny * 2.0 - 1.0);
+				glVertex2d(+ 1.0, (float)y/ny * 2.0 - 1.0);
+
+				glEnd();
+			}
+
+			for(x = 0; x < nx; x++){
+				for(y = 0; y < ny; y++){
+					tetris::Cell & c = (*(pState->grid.pArrCells))[x + y * nx];
+					if(!c.bEmpty){
+						glBegin(GL_QUADS);
+						glVertex2d((float)x/nx * 2.0 - 1.0,		(float)y/ny * 2.0 - 1.0);
+						glVertex2d((float)(x+1)/nx * 2.0 - 1.0,	(float)y/ny * 2.0 - 1.0);								
+						glVertex2d((float)(x+1)/nx * 2.0 - 1.0,	(float)(y+1)/ny * 2.0 - 1.0);
+						glVertex2d((float)x/nx * 2.0 - 1.0,		(float)(y+1)/ny * 2.0 - 1.0);
+						glEnd();
+					}
+				}
+			}
+
+			
+		}
+
+	};
+
+}
+
+extern "C"{
+	#include <libxml/parser.h>
+	#include <libxml/tree.h>
+}
+
 
 int main(int /*argc*/, char **){
 
@@ -601,8 +844,7 @@ int main(int /*argc*/, char **){
 	}
 
 	BitBox_16x16::test();
-	
-	
+
 	WinMain(0,0,0,0);
 
 }
@@ -786,6 +1028,79 @@ const float SineTable::pi = 3.14159265358979323846f;
 const float SineTable::twopi = 2.0f * pi;
 const float SineTable::pibytwo = pi/2.0f;
 
+
+void showDepth(WindowsConsoleOutputStream * pConsole, kq::core::ui32 iDepth){
+	kq::core::ui32 iTabs = iDepth;
+	while(iTabs){
+		iTabs--;
+		pConsole->output("\t");
+	};
+};
+
+void dumpXML(WindowsConsoleOutputStream * pConsole, xmlNodePtr pNode, kq::core::ui32 iDepth = 0);
+
+void dumpXMLAttr(WindowsConsoleOutputStream * pConsole, xmlAttrPtr pAttr, kq::core::ui32 iDepth = 0){
+	xmlAttrPtr pTemp = pAttr;
+	while(pTemp){
+
+
+		//showDepth(pConsole, iDepth);
+
+		//xmlAttributeType typ = pTemp->atype;
+		const xmlChar * name = pTemp->name;
+		//const xmlChar * content = pTemp->content;
+
+		pConsole->output(" %s=", name);
+		dumpXML(pConsole, pTemp->children, iDepth + 1);
+		pTemp = pTemp->next;
+	}
+};
+
+void dumpXML(WindowsConsoleOutputStream * pConsole, xmlNodePtr pNode, kq::core::ui32 iDepth){
+	{
+		xmlNodePtr pTemp = pNode;
+		while(pTemp){
+
+			
+
+			xmlElementType typ = pTemp->type;
+			switch(typ){
+				case XML_ELEMENT_NODE:
+				{
+					const xmlChar * name = pTemp->name;
+					const xmlChar * content = pTemp->content;
+
+					showDepth(pConsole, iDepth);
+					pConsole->output("<%s", name, content);
+
+
+						dumpXMLAttr(pConsole, pTemp->properties, iDepth + 1);
+
+					//showDepth(pConsole, iDepth);
+					pConsole->output(">\n");
+
+						dumpXML(pConsole, pTemp->children, iDepth + 1);
+
+					showDepth(pConsole, iDepth);
+					pConsole->output("</%s>\n", name, content);
+					break;
+				}
+				case XML_TEXT_NODE:
+				{
+				
+					const xmlChar * content = pTemp->content;
+
+					//showDepth(pConsole, iDepth);
+					pConsole->output("\"%s\"", content);
+					
+					break;
+				}
+			};
+			pTemp = pTemp->next;
+		}
+	}
+};
+
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/){
 
 	kq::core::memory::MemoryWorker mem0;
@@ -819,6 +1134,17 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 		pConsole->output("Remote Call Test Successfull\n");
 	}
 	
+
+	
+	/*
+	xmlDocPtr pBoardSetup = xmlReadFile("../res/config.xml", 0, XML_PARSE_NOBLANKS);
+	xmlNodePtr pRoot = xmlDocGetRootElement(pBoardSetup);
+	dumpXML(pConsole, pRoot);
+	xmlFreeDoc(pBoardSetup);
+	xmlCleanupParser();
+
+	*/
+
 
 	kq::core::memory::Pointer<ITicker> pTicker = kq_core_memory_workerRefCountedClassNew(mem, WindowsAPITicker);
 	kq::core::memory::Pointer<IStopWatch> pStopWatch = kq_core_memory_workerRefCountedClassNew(mem, StopWatch, pTicker);
@@ -936,8 +1262,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 								
 								glEnable(GL_TEXTURE_2D);
-								Texture t;
-								t.m_pBuffer = kq_core_memory_workerRefCountedClassNew(mem, Texture::Buffer, mem, dmCurrent.dmPelsWidth, dmCurrent.dmPelsHeight);
+								//Texture t;
+								//t.m_pBuffer = kq_core_memory_workerRefCountedClassNew(mem, Texture::Buffer, mem, dmCurrent.dmPelsWidth, dmCurrent.dmPelsHeight);
 								
 								
 								double dTime = 0.0;
@@ -945,6 +1271,11 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 
 								SineTable sinTable;
 								sinTable.build(mem, 256);
+
+								
+								kq::core::memory::Pointer<tetris::Game> pGame = kq_core_memory_workerRefCountedClassNew(mem, tetris::Game, mem);
+								pGame->up();
+								
 
 
 								LARGE_INTEGER iCountOld;
@@ -975,9 +1306,12 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 										double dSecondsSinceLastReset = (double)pStopWatch->getTickCount() / (double)pStopWatch->getTicksPerSecond();
 										pStopWatch->reset();
 										dTime += dSecondsSinceLastReset;
-
 										
+										{
+											pGame->move(dSecondsSinceLastReset);
+										};
 										
+										/*
 										{
 											kq::core::memory::Pointer<Texture::Buffer> pBuffer = t.m_pBuffer;
 											Texture::Pixel_RGBA * first = pBuffer->address;
@@ -992,7 +1326,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 												h = pBuffer->height;
 												n = w * h;
 
-												double t = 1 + sinTable.sin(0.75 + dTime * 0.1 * dTime * 0.1);
+												float t = 1.0f + sinTable.sin((float)(0.75f + dTime * 0.1f * dTime * 0.1f));
 												t *= 0.5;
 												
 
@@ -1021,11 +1355,13 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*
 										}
 
 										t.move(dSecondsSinceLastReset);
+										*/
 									}
 
 									//Render the world
 									{
-										t.render();
+										//t.render();
+										pGame->render();
 									}
 
 									SwapBuffers(hMainWindowDC);

@@ -153,6 +153,7 @@ namespace kq{
 				};
 
 				
+				
 				t & operator *() const{
 					return *(m_pBufferedObject);
 				}
