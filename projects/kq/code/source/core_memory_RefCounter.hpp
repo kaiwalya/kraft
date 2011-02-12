@@ -24,20 +24,12 @@ namespace kq{
 			void DestructionWorkerFunc_noOp(void *, RefCounter *, void *);
 
 			template<typename classname>
-			void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject){
-				delete ((classname *)pObject);
-				delete (pCounter);
-			};
+			void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject);
 
 			void DestructionWorkerFunc_workerFree(void * worker, RefCounter * pCounter, void * pObject);		
 
 			template<typename classname>
-			void DestructionWorkerFunc_workerDelete(void * worker, RefCounter * pCounter, void * pObject){				
-				((classname *)pObject)->~classname();
-				pCounter->~RefCounter();
-				DestructionWorkerFunc_workerFree(worker, pCounter, pObject);
-			};
-
+			void DestructionWorkerFunc_workerDelete(void * worker, RefCounter * pCounter, void * pObject);
 
 
 			class RefCounter{
@@ -147,7 +139,7 @@ namespace kq{
 
 				t * operator ->()const {
 					if(!m_pBufferedObject){
-						_asm int 3;
+						//_asm int 3;
 					}
 					return (t *)(m_pBufferedObject);
 				};
@@ -207,6 +199,21 @@ namespace kq{
 										
 			};
 
+			template<typename classname>
+			void DestructionWorkerFunc_workerDelete(void * worker, RefCounter * pCounter, void * pObject)
+			{				
+				((classname *)pObject)->~classname();
+				pCounter->~RefCounter();
+				DestructionWorkerFunc_workerFree(worker, pCounter, pObject);
+			}
+
+			
+			template<typename classname>
+			void DestructionWorkerFunc_delete(void *, RefCounter * pCounter, void * pObject){
+				delete ((classname *)pObject);
+				delete (pCounter);
+			};
+
 		};
 	};
 };
@@ -218,3 +225,4 @@ namespace kq{
 
 
 #endif
+
