@@ -1,5 +1,5 @@
 #include "core_memory_StandardLibraryMemoryAllocator.hpp"
-#include "malloc.h"
+#include "stdlib.h"
 #include "stdio.h"
 
 using namespace kq::core;
@@ -18,13 +18,13 @@ ui32 StandardLibraryMemoryAllocator::getCurrentlyAllocatedByteCount(){
 };
 
 void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 n){
-	context;
+	(void)context;
 	StandardLibraryMemoryAllocator * pAllocator = (StandardLibraryMemoryAllocator *)context;
 
-	ui32 & nBytes = pAllocator->m_nBytesAllocated;
+	//ui32 & nBytes = pAllocator->m_nBytesAllocated;
 	
 	if(p){
-		nBytes -= (ui32)_msize(p);
+		//nBytes -= (ui32)_msize(p);
 		//printf("(--,%p,%d)", p, (ui32)_msize(p));					
 	}
 	
@@ -42,7 +42,7 @@ void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 
 		
 	
 	if(pRet){
-		nBytes += (ui32)_msize(pRet);
+		//nBytes += (ui32)_msize(pRet);
 		//printf("(++,%p,%d)", pRet, (ui32)_msize(pRet));			
 	}
 

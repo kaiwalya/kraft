@@ -41,6 +41,10 @@ include_directories("${kq_include}" "../libs/libxml2/include" "../libs/iconv/inc
 set(prjCore "libKQCore")
 add_subdirectory("libKQCore")
 
+#build experiments
+set(prjExperiments "kqExperiments")
+add_subdirectory("experiments")
+
 #build CopyProtect
 set(prjCopyProtect "kqCopyProtect")
 add_subdirectory("copyprotect")
