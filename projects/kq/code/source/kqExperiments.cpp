@@ -1,5 +1,47 @@
 #include "core.hpp"
 
+#include "stdio.h"
+#include "stdlib.h"
+#include "memory.h"
+
+static int iDepth = 0;
+
+class LogInOut{
+	const char * m_pFunction;
+	void log(bool bEntry){
+		const char * sMark;
+		if(bEntry){
+			sMark = "{";
+		}
+		else{
+			sMark = "}";
+		}
+		char * tabs;
+		tabs = new char[iDepth + 1];
+		memset(tabs, '\t', sizeof(char) * iDepth);
+		tabs[iDepth] = 0;
+
+		if(bEntry){
+			printf("%s%s%s\n", tabs, m_pFunction, sMark);
+		}else{
+			printf("%s%s\n", tabs, sMark);
+		}
+		delete [] tabs;
+	}
+public:
+	LogInOut(const char * pFunction):m_pFunction(pFunction){
+
+		log(true);
+		iDepth++;
+	}
+	~LogInOut(){
+		iDepth--;
+		log(false);
+	}
+};
+
+#define LOGINOUT LogInOut var##__FUNCTION__(__FUNCTION__);
+
 namespace kq{
 
 	namespace flows{
@@ -20,6 +62,7 @@ namespace kq{
 		};
 		
 		class IFlowReader: public IResource{
+		public:
 			virtual void read(void * pBytes, kq::core::ui64 nBytes);
 		};
 
@@ -33,8 +76,8 @@ namespace kq{
 		};
 
 		class IFlowReaderTuple{
+		public:
 			virtual kq::core::memory::Pointer<IFlowReader> getFlowReader(kq::core::ui64 iFlow) = 0;
-			
 			virtual void readRecord(void ** pBytes, kq::core::ui64 * nBytes) = 0;
 		};
 		
@@ -84,76 +127,101 @@ namespace kq{
 
 
 
+		
 
 		class Machine;
 		class Value{
 
 			Machine * m_pMachine;
-
-			friend class Variable;
+			kq::core::memory::Pointer<IProcessor> m_pProcessor;
+			
 			friend class Machine;
 			Value(Machine * pMachine){
+				LOGINOUT;
 				m_pMachine = pMachine;
 			}
 
-
-			void confirmConnection (kq::core::memory::Pointer<Value>){
-			}
-		public:
-			//Once this is called this value can no longer be used by the user
-			//This means we can start deleting any stored data on the attached flow.
-			~Value(){}
-		};
-
-		class Variable{
-
-			kq::core::memory::Pointer<Value> m_pValue;
-			friend class Machine;
-			Variable(kq::core::memory::Pointer<Value> pVal){
-				m_pValue = pVal;
-			}
-		public:
-			Variable operator >> (Variable v){
-				
-				if(m_pValue && v.m_pValue){
-					m_pValue->confirmConnection(v.m_pValue);
-				}
-				else{
-					//error
-				}
-
-				return v;
+			void setProcessorValue(kq::core::memory::Pointer<IProcessor> pProcessor){
+				LOGINOUT;
+				m_pProcessor = pProcessor;
 			}
 
 			
-			Variable(){}
-			Variable(const Variable &){}
-
-			~Variable(){}
+		public:
+			//Once this is called this value can no longer be used by the user
+			//This means we can start deleting any stored data on the attached flow.
+			~Value(){LOGINOUT;}
 		};
+
+
+
+		typedef kq::core::memory::Pointer<Value> Variable;
+
 		
 		class Machine{
+
+			
 			kq::core::memory::MemoryWorker mem;
+			
+			struct EdgeNode{
+				Variable pSrc;
+				Variable pDest;
+
+				kq::core::memory::Pointer<EdgeNode> pNext;
+			};
+
+			typedef kq::core::memory::Pointer<EdgeNode> PEdgeNode;
+			PEdgeNode m_pRoot;
 			
 		public:
 
 			Machine(kq::core::memory::MemoryWorker & memory):mem(memory){
+				LOGINOUT;
+			}
 
+			~Machine(){
+				LOGINOUT;
+			}
+
+			bool _confirmFlow(Variable pSrc, Variable pDest){
+				LOGINOUT;
+				kq::core::memory::Pointer<IProcessor> pSrcProcessor = pSrc->m_pProcessor;
+				kq::core::memory::Pointer<IProcessor> pDestProcessor = pDest->m_pProcessor;
+				kq::core::ui64 out, in;
+				pSrcProcessor->getNumberOfInputOutputStreams(0, &out);
+				pDestProcessor->getNumberOfInputOutputStreams(&in, 0);
+				if(in == out){
+					PEdgeNode pNewRoot(kq_core_memory_workerRefCountedClassNew(mem, EdgeNode));
+					pNewRoot->pSrc = pSrc;
+					pNewRoot->pDest = pDest;
+					pNewRoot->pNext = m_pRoot;
+					m_pRoot = pNewRoot;
+					return true;
+				}
+
+
+				return false;
+			}
+			
+			static bool confirmFlow(Variable pSrc, Variable pDest){
+				LOGINOUT;
+				return (pSrc && pDest && pSrc->m_pMachine && (pSrc->m_pMachine == pDest->m_pMachine) && pSrc->m_pMachine->_confirmFlow(pSrc, pDest));
 			}
 
 			Variable variableFromProcessor(kq::core::memory::Pointer<IProcessor> pProcessor){
-				return Variable(kq_core_memory_workerRefCountedClassNew(mem, Value, this));
-			}
-
-			Variable variableFromProcess(kq::core::memory::Pointer<IProcess> pProcessor){
-				return Variable(kq_core_memory_workerRefCountedClassNew(mem, Value, this));
+				LOGINOUT;
+				kq::core::memory::Pointer<Value> pRet(kq_core_memory_workerRefCountedClassNew(mem, Value, this));
+				pRet->setProcessorValue(pProcessor);
+				return pRet;
 			}
 
 		};
-		
-		
 
-
+		
+		void operator >> (Variable a, Variable b){
+			LOGINOUT;
+			Machine::confirmFlow(a, b);
+		};
 	}
 }
 
@@ -166,42 +234,63 @@ using namespace kq::flows;
 
 
 class Input: public IProcessor{
+	Pointer<IFlowWriter> w;
 public:
 	void getNumberOfInputOutputStreams(kq::core::ui64 * pInputs,kq::core::ui64 * pOutputs){
-		*pInputs = 0;
-		*pOutputs = 1;
+		if(pInputs)*pInputs = 0;
+		if(pOutputs)*pOutputs = 1;
 	}
 
 	void attachFlows(Pointer<IFlowWriterTuple> tupleW, Pointer<kq::flows::IFlowReaderTuple> tupleR){
+		w = tupleW->getFlowWriter(0);
 	}
 
 	void doWork(void){
+		bool bTrue = true;
+		while(bTrue){
+			ui32 val = (ui32)rand();
+			w->write(&val, sizeof(val));
+			printf("Writer wrote %d", (int)val);
+		}
 	}
 
 	void detachFlows(void){
+		w = 0;
 	}
 };
 
 
 class Output: public IProcessor{
+	Pointer<IFlowReader> r;
 public:
 	void getNumberOfInputOutputStreams(kq::core::ui64 * pInputs,kq::core::ui64 * pOutputs){
-		*pInputs = 1;
-		*pOutputs = 0;
+		if(pInputs)*pInputs = 1;
+		if(pOutputs)*pOutputs = 0;
 	}
 
 	void attachFlows(Pointer<IFlowWriterTuple> tupleW, Pointer<kq::flows::IFlowReaderTuple> tupleR){
+		r = tupleR->getFlowReader(0);
 	}
 
 	void doWork(void){
-		
+		ui32 n,i;
+		n = 10;
+		i = 0;
+		while(i < n){
+			ui32 val;
+			r->read(&val, sizeof(val));
+			printf("Reader got %d", (int) val);
+			i++;
+		};
 	}
 
 	void detachFlows(void){
+		r = 0;
 	}
 };
 
 int main(int /*argc*/, char ** /*argv*/){
+	LOGINOUT;
 	
 	//Create std allocator
 	StandardLibraryMemoryAllocator allocStd;
@@ -214,15 +303,17 @@ int main(int /*argc*/, char ** /*argv*/){
 	allocPool.getMemoryWorker(mem);
 
 
-	flows::Variable a,b;
+	
 	flows::Machine m(mem);
 
-	Pointer<Input> pInput = kq_core_memory_workerRefCountedClassNew(mem, Input);
-	Pointer<Output> pOutput = kq_core_memory_workerRefCountedClassNew(mem, Output);
-	a = m.variableFromProcessor(pInput.castStatic<IProcessor>());
-	b = m.variableFromProcessor(pOutput.castStatic<IProcessor>());
+	{
+		flows::Variable a,b;
+		Pointer<Input> pInput = kq_core_memory_workerRefCountedClassNew(mem, Input);
+		Pointer<Output> pOutput = kq_core_memory_workerRefCountedClassNew(mem, Output);
+		a = m.variableFromProcessor(pInput.castStatic<IProcessor>());
+		b = m.variableFromProcessor(pOutput.castStatic<IProcessor>());
 
-	a >> b;
-	
+		a >> b;
+	}
 	return 0;
 }

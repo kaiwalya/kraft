@@ -17,9 +17,9 @@ ui32 StandardLibraryMemoryAllocator::getCurrentlyAllocatedByteCount(){
 	return m_nBytesAllocated;
 };
 
-void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 n){
-	(void)context;
-	StandardLibraryMemoryAllocator * pAllocator = (StandardLibraryMemoryAllocator *)context;
+void * StandardLibraryMemoryAllocator::allocator(void * /*context*/, void * p, ui64 n){
+	//(void)context;
+	//StandardLibraryMemoryAllocator * pAllocator = (StandardLibraryMemoryAllocator *)context;
 
 	//ui32 & nBytes = pAllocator->m_nBytesAllocated;
 	
@@ -47,7 +47,7 @@ void * StandardLibraryMemoryAllocator::allocator(void * context, void * p, ui64 
 	}
 
 
-	printf("\n");
+	//printf("\n");
 	return pRet;
 };
 
