@@ -181,7 +181,7 @@ public:
 		}
 
 		if(m_fLog){
-			fwrite(m_sBuffer, nChars, 1, m_fLog);
+			fwrite(m_sBuffer, (size_t)nChars, 1, m_fLog);
 			fflush(m_fLog);
 		}
 

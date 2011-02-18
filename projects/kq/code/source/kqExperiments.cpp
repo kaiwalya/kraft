@@ -289,6 +289,16 @@ public:
 	}
 };
 
+
+class Test{
+	
+public:
+
+	int a;
+	Test(){printf("%p", this);LOGINOUT;}
+	~Test(){printf("%p", this);LOGINOUT;}
+};
+
 int main(int /*argc*/, char ** /*argv*/){
 	LOGINOUT;
 	
@@ -302,18 +312,33 @@ int main(int /*argc*/, char ** /*argv*/){
 	MemoryWorker mem;
 	allocPool.getMemoryWorker(mem);
 
-
 	
 	flows::Machine m(mem);
 
 	{
 		flows::Variable a,b;
-		Pointer<Input> pInput = kq_core_memory_workerRefCountedClassNew(mem, Input);
+		kq::core::memory::RefCounter * p = kq_core_memory_workerRefCountedClassNew(mem, Input);
+		//p->increment();
+		Pointer<Input> pInput = p;
 		Pointer<Output> pOutput = kq_core_memory_workerRefCountedClassNew(mem, Output);
 		a = m.variableFromProcessor(pInput.castStatic<IProcessor>());
 		b = m.variableFromProcessor(pOutput.castStatic<IProcessor>());
 
 		a >> b;
 	}
+
+	Test * arrInt = kq_core_memory_workerArrayNew(mem, Test, 3);
+	kq_core_memory_workerArrayDelete(mem, Test, arrInt);
+
+	
+	{
+		Pointer<Test> pArr (kq_core_memory_workerRefCountedArrayNew(mem, Test, 3));
+		pArr += 2;
+		pArr[-2].a = 0;
+		pArr[-1].a = 1;
+		(pArr + 0)->a = 2;
+	}
+	
+
 	return 0;
 }
