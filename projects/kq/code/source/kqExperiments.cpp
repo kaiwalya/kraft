@@ -29,6 +29,16 @@ class LogInOut{
 		delete [] tabs;
 	}
 public:
+
+	void pushdepth(){
+		char * tabs;
+		tabs = new char[iDepth + 1];
+		memset(tabs, '\t', sizeof(char) * iDepth);
+		tabs[iDepth] = 0;
+		printf("%s", tabs);
+		delete [] tabs;
+	}
+
 	LogInOut(const char * pFunction):m_pFunction(pFunction){
 
 		log(true);
@@ -41,6 +51,7 @@ public:
 };
 
 #define LOGINOUT LogInOut var##__FUNCTION__(__FUNCTION__);
+#define LOGDEPTH var##__FUNCTION__.pushdepth()
 
 namespace kq{
 
@@ -299,225 +310,6 @@ public:
 	~Test(){printf("%p", this);LOGINOUT;}
 };
 
-class BPlusTree{
-
-public:
-
-	typedef kq::core::ui16 Large;
-	typedef kq::core::ui8 Small;
-
-	void * pRoot;
-
-	const Small nBytesInKey;
-	const Large nChildrenPerNode;
-	const Small nBitsPerLevel;
-	const Small nNibblesPerByte;
-	Small * pNibbleMasks;
-
-	//Start(Allocation, Deallocation and UserData)
-	kq::core::memory::MemoryWorker mem;
-	//End(Allocation, Deallocation and UserData)
-
-
-	void move(void *** pppCurr, Small & iKeyNibble, kq::core::ui8 * pKey){
-		Small nKeyNibbles = nBytesInKey * nNibblesPerByte;
-		kq::core::ui8 halfKey;
-		while(**pppCurr && (iKeyNibble < nKeyNibbles)){
-
-			Small iByte = iKeyNibble / nNibblesPerByte;
-			Small iNibbleID = iKeyNibble % nNibblesPerByte;
-
-			Small & byte = pKey[iByte];
-			Small maskedByte = byte & pNibbleMasks[iNibbleID];
-			halfKey = (maskedByte >> (nBitsPerLevel * iNibbleID));
-			*pppCurr = ((void**)**pppCurr) + halfKey;
-
-			iKeyNibble++;
-		}
-	}
-
-public:
-	BPlusTree(kq::core::memory::MemoryWorker memworker, Small bytesInKey, Small bitsPerLevel = 4)
-		:mem(memworker),
-		nBytesInKey(bytesInKey),
-		nBitsPerLevel(bitsPerLevel),
-		nChildrenPerNode(1 << bitsPerLevel),
-		nNibblesPerByte(8/bitsPerLevel),
-		pRoot(0)
-	{
-
-		pNibbleMasks = (Small *)mem(0, sizeof(Small) * nNibblesPerByte);
-		{
-			Small iBit = 0;
-			pNibbleMasks[0] = 0;
-			while(iBit < nBitsPerLevel){
-				pNibbleMasks[0] = (pNibbleMasks[0] << 1) | 1;				
-				iBit++;
-			}
-			iBit = 1;
-			while(iBit < nNibblesPerByte){
-				pNibbleMasks[iBit] = pNibbleMasks[iBit - 1] << nBitsPerLevel;
-				iBit++;
-			}
-			
-		}
-
-		
-	}
-
-	void ** find(void * k){
-
-		kq::core::ui8 * pKey = (kq::core::ui8 *)k;
-		Small iKeyNibble = 0;
-		Small nKeyNibbles = nBytesInKey * nNibblesPerByte;
-		
-
-		void ** ppRet = 0;
-
-		//Try to find store the found node in pCurr and nibbles left in iKeyNibble
-		void ** ppCurr = &pRoot;
-		{
-			/*
-			kq::core::ui8 halfKey;
-			while(*ppCurr && (iKeyNibble < nKeyNibbles)){
-
-				Small iByte = iKeyNibble / nNibblesPerByte;
-				Small iNibbleID = iKeyNibble % nNibblesPerByte;
-
-				Small & byte = pKey[iByte];
-				Small maskedByte = byte & pNibbleMasks[iNibbleID];
-				halfKey = (maskedByte >> (nBitsPerLevel * iNibbleID));
-				ppCurr = ((void**)*ppCurr) + halfKey;
-
-				iKeyNibble++;
-			}
-			*/
-			move(&ppCurr, iKeyNibble, pKey);
-		}
-
-		if(iKeyNibble == nKeyNibbles){
-			ppRet = ppCurr;
-		}
-		return ppRet;
-		
-	}
-
-	void ** findOrCreate(void * k){
-		kq::core::ui8 * pKey = (kq::core::ui8 *)k;
-		Small iKeyNibble = 0;
-		Small nKeyNibbles = nBytesInKey * nNibblesPerByte;
-		
-
-		void ** ppRet = 0;
-
-		//Try to find store the found node in pCurr and nibbles left in iKeyNibble
-		void ** ppCurr = &pRoot;
-		{
-			/*
-			kq::core::ui8 halfKey;
-			while(*ppCurr && (iKeyNibble < nKeyNibbles)){
-
-				Small iByte = iKeyNibble / nNibblesPerByte;
-				Small iNibbleID = iKeyNibble % nNibblesPerByte;
-
-				kq::core::ui8 & byte = pKey[iByte];
-				kq::core::ui8 maskedByte = byte & pNibbleMasks[iNibbleID];
-				halfKey = (maskedByte >> (nBitsPerLevel * iNibbleID));
-				ppCurr = ((void**)*ppCurr) + halfKey;
-
-				iKeyNibble++;
-			}
-			*/
-			move(&ppCurr, iKeyNibble, pKey);
-		}
-
-		if(iKeyNibble < nKeyNibbles){			
-			Large nSizeLevel = sizeof(void *) * nChildrenPerNode;
-
-			void ** pTempLevels = (void **)mem(0, sizeof(void *) * (nKeyNibbles - iKeyNibble));
-			if(pTempLevels){
-				Small iNibble, nNibbles;
-				iNibble = 0;
-				nNibbles = nKeyNibbles - iKeyNibble;
-				for(iNibble = nNibbles; iNibble > 0 ; iNibble--){
-					pTempLevels[iNibble - 1] = mem(0, nSizeLevel);
-					if(!pTempLevels[iNibble - 1]){
-						break;
-					}
-					else{
-						memset(pTempLevels[iNibble - 1], 0, nSizeLevel);
-					}
-				}
-				if(iNibble != 0){
-					while(iNibble < nNibbles) mem(pTempLevels[iNibble++], 0);
-				}
-				else{					
-					iNibble = 0;
-					while(iKeyNibble < nKeyNibbles){
-						
-						
-						*ppCurr = pTempLevels[iNibble++];						
-						move(&ppCurr, iKeyNibble, pKey);
-					}
-
-					ppRet = ppCurr;
-
-				}
-				mem(pTempLevels, 0);
-			}
-		}
-		else{
-			ppRet = ppCurr;
-		}
-
-		return ppRet;
-	}
-
-	~BPlusTree(){
-		mem(pNibbleMasks, 0);
-
-		
-		if(nBytesInKey){
-			Small nKeyNibbles = nBytesInKey * nNibblesPerByte;
-			
-			void ** stackNode = (void**)mem(0, nKeyNibbles * sizeof(void **));
-			Large * stackIndex = (Large *)mem(0, nKeyNibbles * sizeof(Large));
-			Small top = nKeyNibbles - 1;
-
-			stackNode[top] = pRoot;
-			stackIndex[top] = 0;
-
-			void ** pCurr;		
-			while((pCurr = (void**)stackNode[top]) != 0){			
-				Large iCurrChild = stackIndex[top];
-
-				if(iCurrChild < nChildrenPerNode && top){					
-					void * pNext = (void*)(pCurr[iCurrChild]);
-					stackIndex[top]++;
-					pCurr[iCurrChild] = 0;
-					if(pNext){
-						--top;
-						stackNode[top] = pNext;
-						stackIndex[top] = 0;
-					}
-				}
-				else{
-					
-					mem(pCurr, 0);
-					if(top < nKeyNibbles - 1){
-						top++;
-					}
-					else{
-						mem(stackNode,0);
-						mem(stackIndex, 0);
-						break;
-					}
-				}
-			}
-		}
-	}
-};
-
 /*
 
 class TreeMap{
@@ -709,36 +501,29 @@ int main(int /*argc*/, char ** /*argv*/){
 		*/
 		
 
+		
 		{
-			typedef char test_t;
-			BPlusTree bpt(mem, sizeof(test_t), 4);
+			typedef unsigned short test_t;
+			kq::core::data::BPlusTree bpt(mem, sizeof(test_t), 4);
 
-			test_t iKey = -1;
-			kq::core::ui16 iIter = 0;
+			test_t iKey = 0xFF;
+
+			kq::core::ui64 iIter = 0;
 
 			srand(0);
-			while(++iIter){
-
-				*(int *)(bpt.findOrCreate(&iKey)) = iKey;
-				
-				int iFindChoice = rand();
-
-				test_t * pInt;
-				if(iFindChoice & 0x1){
-					pInt = (test_t *)(bpt.find(&iKey));
+			while(iIter++ < 1 << 16){
+				bpt.map(&iKey, (void *)iKey);
+				if(bpt.lookup(&iKey) != (void *)iKey){
+					printf("Map Error \n");
 				}
-				else{
-					pInt = (test_t *)(bpt.findOrCreate(&iKey));
-				}
-				test_t iTemp = (rand()%256);
-				(*pInt) += iTemp;
+				test_t iTemp = (test_t)rand();
 				iKey += iTemp;
-
-				if(iKey != *pInt){
-					break;
-				}
 			}
+
+			bpt.dump();
+
 		}
+		
 
 	}
 	return 0;

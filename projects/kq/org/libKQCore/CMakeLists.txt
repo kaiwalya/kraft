@@ -3,3 +3,4 @@ source_group(core FILES ${project_libKQCore_source})
 
 add_library(${prjCore} ${project_libKQCore_source})
 
+
