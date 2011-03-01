@@ -196,7 +196,7 @@ namespace kq{
 				}
 				
 				Pointer<t> & operator -= (ArrayIndex index){
-					m_pBufferedObject -= i;
+					m_pBufferedObject -= index;
 					m_iOffset -= (index * sizeof(t));
 					return *this;
 				}

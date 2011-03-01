@@ -457,8 +457,140 @@ public:
 */
 
 
+class Links{
+public:
+	typedef kq::core::ui8 USmall;
+	typedef void * PNode;
+
+protected:
+	kq::core::memory::MemoryWorker mem;
+
+	const USmall m_nBytesInNodeID;
+
+	const USmall m_nNibblesPerByte;
+	const USmall m_nBitsPerNibble;
+
+	//2 NodeIDs are an Address
+	const USmall m_nBytesInAddress;
+	const USmall m_nNibblesInAddress;
+	//Some nodes in a key are segment
+	const USmall m_nBytesInSegment;
+	const USmall m_nNibblesInSegment;
+	//The remaining are offset
+	const USmall m_nBytesInOffset;
+	const USmall m_nNibblesInOffset;
+
+
+	USmall * m_pAddressBuffer;
+	void interlace(PNode p1, PNode p2);
+
+	kq::core::data::BPlusTree * m_pBitTree;
+	kq::core::data::BPlusTree * m_pDataTree;
+
+	struct BitGrid{
+		USmall nBitsSet;
+		USmall * pBits;
+	};
+
+	BitGrid * m_pGridBuffer;
+	void gridCreate();
+	void gridDestroy();
+	void gridSet();
+	void gridReset();
+
+
+public:
+	Links(kq::core::memory::MemoryWorker &memworker, USmall nBytesInNodeID);
+	~Links();
+
+	bool link(PNode n1, PNode n2, void * data = 0, void ** dataOld = 0);
+	bool unLink(PNode n1, PNode n2, void ** dataOld = 0);
+	bool isLinked(PNode n1, PNode n2, void ** data = 0);
+
+
+};
+
+using namespace kq::core::data;
+Links::Links(kq::core::memory::MemoryWorker &memworker, USmall nBytesInNodeID)
+	:mem(memworker),
+	m_nBitsPerNibble(4),
+	m_nNibblesPerByte(8/m_nBitsPerNibble),
+
+	m_nBytesInNodeID(nBytesInNodeID),
+	m_nBytesInAddress(m_nBytesInNodeID * 2),
+	m_nNibblesInAddress(m_nBytesInAddress * m_nNibblesPerByte),
+
+	m_nBytesInOffset(1),
+	m_nNibblesInOffset(m_nBytesInOffset * m_nNibblesPerByte),
+
+	m_nBytesInSegment(m_nBytesInAddress - m_nBytesInOffset),
+	m_nNibblesInSegment(m_nNibblesInAddress - m_nNibblesInOffset)
+{
+	m_pAddressBuffer = (USmall *)mem(0, m_nBytesInAddress);
+	m_pBitTree = kq_core_memory_workerNew(mem, kq::core::data::BPlusTree, (mem, m_nBytesInSegment));
+	m_pDataTree = kq_core_memory_workerNew(mem, kq::core::data::BPlusTree, (mem, m_nBytesInAddress));
+}
+
+void Links::interlace(PNode p1, PNode p2){
+	kq::core::ui8 * p[2] = {(ui8 *)p1, (ui8*)p2};
+	USmall iByte = 0;
+	while(iByte < m_nBytesInNodeID){
+		m_pAddressBuffer[2*iByte] = p[0][iByte];
+		m_pAddressBuffer[2*iByte + 1] = p[1][iByte];
+		iByte++;
+	}
+}
+/*
+bool Links::link(PNode n1, PNode n2, void * data, void ** dataOld){
+	bool bRet = false;
+	interlace(n1, n2);
+
+	BPlusTree::Path pthBit(m_pBitTree);
+	BitGrid * pGridOld;
+	m_pGridBuffer = 0;
+	if(pthBit.init_moveTo(m_pAddressBuffer, &pGridOld)){
+		m_pGridBuffer = pGridOld;
+	}
+
+	if(!m_pGridBuffer){
+		gridCreate();
+	}
+
+	if(m_pGridBuffer){
+		set();
+		if(data){
+			bRet = m_pDataTree->map(m_pAddressBuffer, data, dataOld);
+		}
+		else{
+
+		}
+	}
+
+
+	return bRet;
+}
+
+bool Links::unLink(PNode n1, PNode n2, void ** dataOld){
+	bool bRet = false;
+	interlace(n1, n2);
+	bRet = m_pDataTree->map(m_pAddressBuffer, 0, dataOld);
+	return bRet;
+}
+
+bool Links::isLinked(PNode n1, PNode n2, void ** data){
+	bool bRet = false;
+	interlace(n1, n2);
+
+	return bRet;
+}
+
+*/
+
+
+#include "sys/time.h"
+
 int main(int /*argc*/, char ** /*argv*/){
-	LOGINOUT;
+	//LOGINOUT;
 	
 	//Create std allocator
 	StandardLibraryMemoryAllocator allocStd;
@@ -501,28 +633,133 @@ int main(int /*argc*/, char ** /*argv*/){
 		*/
 		
 
-		
+		/*
 		{
-			typedef unsigned short test_t;
-			kq::core::data::BPlusTree bpt(mem, sizeof(test_t), 4);
 
-			test_t iKey = 0xFF;
+			kq::core::ui8 keysizes[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+			kq::core::ui8 bits[] = {1, 2, 4, 8};
 
-			kq::core::ui64 iIter = 0;
+			//kq::core::ui8 keysizes[] = {1};
+			//kq::core::ui8 bits[] = {4};
+
+			double results[sizeof(keysizes)][sizeof(bits)];
+			memset(results, 0, sizeof(results));
+
+			printf("Running Tests ");
 
 			srand(0);
-			while(iIter++ < 1 << 16){
-				bpt.map(&iKey, (void *)iKey);
-				if(bpt.lookup(&iKey) != (void *)iKey){
-					printf("Map Error \n");
-				}
-				test_t iTemp = (test_t)rand();
-				iKey += iTemp;
+			const kq::core::ui64 nKeys = 65536;
+			ui64 * randomKeys = (ui64 *)mem(0, sizeof(ui64) * nKeys);
+			for(kq::core::ui64 iKeyIndex = 0; iKeyIndex < nKeys; iKeyIndex++){
+				randomKeys[iKeyIndex] = ((ui64)rand()) << 32 | (ui64)rand();
 			}
 
-			bpt.dump();
+			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
+				size_t nBytesInKey = keysizes[iKeySizeIndex];
+
+				kq::core::ui64 mask = -1;
+				mask = mask >> (32 - 4*nBytesInKey);
+				mask = mask >> (32 - 4*nBytesInKey);
+				//printf("mask = %llx\n", mask);
+
+
+				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+
+					{
+						printf("."); fflush(stdout);
+						//printf("Creating\n"); fflush(stdout);
+						kq::core::data::BPlusTree bpt(mem, nBytesInKey, bits[iBitIndex]);
+
+						//printf("Created\n"); fflush(stdout);
+						ui32 depth = nBytesInKey * 8/bits[iBitIndex];
+						ui32 breadth = 1 << (ui64)bits[iBitIndex];
+						timeval t1, t2;
+						gettimeofday(&t1, 0);
+						kq::core::ui64 iIter = 0;
+						kq::core::ui64 nIter = (1 << (12 - nBytesInKey));
+
+						//nIter = 1;
+						while(iIter < nIter){
+							//test stuff start
+							kq::core::ui64 iKey = mask & randomKeys[iIter%nKeys];
+							bpt.map(&iKey, (void *)iKey);
+							if(bpt.lookup(&iKey) != (void*)iKey){
+								printf("Lookup Failed\n");
+							}
+							void * pVal = 0;
+							kq::core::data::BPlusTree::Path p(&bpt);
+							if(p.init_moveTo(&iKey, &pVal) && iKey != (ui64)pVal){
+								printf("%llx >> %llx\n", iKey, (ui64)pVal);
+							}
+
+
+
+							if(p.init_first(&pVal, &iKey)){
+								do{
+									if(iKey != (ui64)pVal){
+										printf("Forward %llx >> %llx\n", iKey, (ui64)pVal);
+									}
+
+								}while(p.next(&pVal, &iKey));
+							}
+
+
+
+							if(p.init_last(&pVal, &iKey)){
+								do{
+									if(iKey != (ui64)pVal){
+										printf("Backward %llx >> %llx\n", iKey, (ui64)pVal);
+									}
+
+								}while(p.prev(&pVal, &iKey));
+							}
+
+							//test stuff end
+
+							iIter++;
+						}
+
+						gettimeofday(&t2, 0);
+						double d1, d2, d;
+						d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
+						d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
+						double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
+						d = ((double)iIter)/((double)nMilliSecs);
+						results[iKeySizeIndex][iBitIndex] = d;
+						//printf("KeySZ %d/%d  t=%4.4f nIter=%lld depth %d, breadth %d\n", (int)keysizes[iKeySizeIndex], 8/(int)bits[iBitIndex], nMilliSecs, iIter, depth, breadth);
+						//fflush(stdout);
+
+					}
+
+					//printf("Destroyed\n");
+
+				}
+			}
+
+
+			printf("\n\n\n");
+			printf("Operations Per Millisecond Table\n\nLevels\t");
+			for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+				printf("%.4d\t", 8/bits[iBitIndex]);
+			}
+			printf("\nKeyLen\n");
+			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
+				size_t nBytesInKey = keysizes[iKeySizeIndex];
+
+				printf("%.4d\t", (int)nBytesInKey);
+
+				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+					printf("%4.0f\t", results[iKeySizeIndex][iBitIndex]);
+				}
+
+				printf("\n");
+			}
+
+
+			//bpt.dump();
 
 		}
+		*/
 		
 
 	}
