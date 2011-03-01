@@ -273,20 +273,22 @@ bool BPlusTree::destroy(void * pKey, void ** oldValue){
 void BPlusTree::move(void *** pppCurr, USmall & iKeyNibble, kq::core::ui8 * pKey){
 
 	USmall nKeyNibbles = m_nNibblesInKey;
+	USmall iInnerKeyNibble = m_nNibblesInKey - iKeyNibble - 1;
 	kq::core::ui8 halfKey;
 
 
 	while(**pppCurr && (iKeyNibble < nKeyNibbles)){
 
-		USmall iByte = iKeyNibble / m_nNibblesPerByte;
-		USmall iNibbleID = iKeyNibble % m_nNibblesPerByte;
+		USmall iByte = iInnerKeyNibble / m_nNibblesPerByte;
+		USmall iNibbleID = iInnerKeyNibble % m_nNibblesPerByte;
 
 		USmall & byte = pKey[iByte];
 		USmall maskedByte = byte & m_pNibbleMasks[iNibbleID];
-		halfKey = (maskedByte >> (m_nBitsPerLevel * iNibbleID));
+		halfKey = (maskedByte >> (m_nBitsPerLevel * (iNibbleID)));
 		*pppCurr = ((void**)**pppCurr) + halfKey;
 
 		iKeyNibble++;
+		iInnerKeyNibble--;
 	}
 
 
@@ -314,14 +316,14 @@ void BPlusTree::getKeyFromStack(void * k, BPlusTree::Stack s){
 
 	kq::core::ui8 * key = (kq::core::ui8 *)k;
 	memset(key, 0, m_nBytesInKey);
-	while(iNibble < m_nNibblesInKey && s[iNibble + 1]){
+	while(iNibble < m_nNibblesInKey && s[m_nLevelsInStack - iNibble - 1]){
 
 		USmall iByte = (USmall)((iNibble) / m_nNibblesPerByte);
 		USmall iNID = iNibble % m_nNibblesPerByte;
 		USmall &byte = key[iByte];
 
 
-		USmall halfKey = (USmall)(s[iNibble + 1] - (void **)*s[iNibble]);
+		USmall halfKey = (USmall)(s[m_nLevelsInStack - iNibble - 1] - (void **)*s[m_nLevelsInStack - iNibble - 1 - 1]);
 		USmall maskedByte = halfKey << (m_nBitsPerLevel * iNID);
 		byte = byte | maskedByte;
 		iNibble++;
@@ -413,13 +415,14 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 void BPlusTree::path(Stack s, USmall & iKeyNibble, kq::core::ui8 * pKey){
 
 	USmall nKeyNibbles = m_nNibblesInKey;
+	USmall iInnerKeyNibble = m_nNibblesInKey - iKeyNibble - 1;
 	kq::core::ui8 halfKey;
 
 
 	while(s[iKeyNibble] && *s[iKeyNibble] && (iKeyNibble < nKeyNibbles)){
 
-		USmall iByte = iKeyNibble / m_nNibblesPerByte;
-		USmall iNibbleID = iKeyNibble % m_nNibblesPerByte;
+		USmall iByte = iInnerKeyNibble / m_nNibblesPerByte;
+		USmall iNibbleID = iInnerKeyNibble % m_nNibblesPerByte;
 
 		USmall & byte = pKey[iByte];
 		USmall maskedByte = byte & m_pNibbleMasks[iNibbleID];
@@ -427,6 +430,7 @@ void BPlusTree::path(Stack s, USmall & iKeyNibble, kq::core::ui8 * pKey){
 
 		s[iKeyNibble + 1] = ((void**)*s[iKeyNibble]) + halfKey;
 		iKeyNibble++;
+		iInnerKeyNibble--;
 	}
 }
 
@@ -546,7 +550,7 @@ void BPlusTree::dump(){
 	if(p.init_first(&v, k)){
 		do{
 			for(iByte = 0; iByte < m_nBytesInKey; iByte++){
-				printf("%.2x", (int)k[iByte]);
+				printf("%.2x", (int)k[m_nBytesInKey - iByte - 1]);
 			}
 			printf("=%p\n", v);
 		}while(p.next(&v, k));
