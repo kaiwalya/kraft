@@ -49,7 +49,7 @@ BPlusTree::~BPlusTree(){
 	
 	kq::core::ui64 iLeftForDead = 0;
 
-	if(m_nBytesInKey){
+	if(m_nBytesInKey && m_pRoot){
 		USmall nKeyNibbles = m_nNibblesInKey;
 
 		void ** stackNode = (void**)mem(0, nKeyNibbles * sizeof(void **));
@@ -123,6 +123,9 @@ bool BPlusTree::map(void * key, void * newV, void ** oldV){
 			}
 			*pLocation = newV;
 			bRet = true;
+		}else{
+			int k;
+			k = 0;
 		}
 	}
 	else{
@@ -132,7 +135,7 @@ bool BPlusTree::map(void * key, void * newV, void ** oldV){
 				*oldV = *pLocation;
 			}
 		}
-		destroy(key);
+		bRet = destroy(key);
 	}
 
 	return bRet;
