@@ -46,7 +46,7 @@ BPlusTree::~BPlusTree(){
 	//LOGINOUT;
 	//mem(m_pNibbleMasks, 0);
 
-	/*
+	
 	kq::core::ui64 iLeftForDead = 0;
 
 	if(m_nBytesInKey){
@@ -89,7 +89,8 @@ BPlusTree::~BPlusTree(){
 		}
 	}
 
-	*/
+	
+	/*
 
 	Path p(this);
 	void * pKeyOld = mem(0, m_nBytesInKey);
@@ -108,6 +109,7 @@ BPlusTree::~BPlusTree(){
 	}
 	mem(pKeyNew, 0);
 	mem(pKeyOld, 0);
+	*/
 }
 
 
@@ -200,7 +202,6 @@ void ** BPlusTree::findOrCreate(void * k){
 			else{					
 				iNibble = 0;
 				while(iKeyNibble < nKeyNibbles){
-					
 					
 					*ppCurr = pTempLevels[iNibble++];						
 					move(&ppCurr, iKeyNibble, pKey);
@@ -360,7 +361,7 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 	ULarge nNibbles = m_nNibblesInKey;
 	ULarge sz = (nNibbles + 1) * sizeof(void *);
 
-	BPlusTree::Stack stack = (BPlusTree::Stack)calloc(1, sz);
+	BPlusTree::Stack stack = (BPlusTree::Stack)mem(0, sz);
 	memcpy(stack, s, sz);
 
 	ULarge iNibble = nNibbles;
@@ -368,8 +369,9 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 		iNibble--;
 	}
 
-	while(iNibble > 0 && iNibble <= nNibbles){
-		void ** pChildren = (void **)*stack[iNibble - 1];
+	
+	void ** pChildren; ;
+	while(iNibble > 0 && iNibble <= nNibbles && ((pChildren = (void **)*stack[iNibble - 1])!= 0)){
 		SLarge iChild = (1 - iDirection) / 2 * (m_nChildrenPerNode -1);
 		if(stack[iNibble]){
 			iChild = (ULarge)(stack[iNibble] - pChildren) + iDirection;
@@ -395,6 +397,7 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 
 	}
 
+
 	if(iNibble == (nNibbles + 1)){
 		bRet = true;
 	}
@@ -402,6 +405,7 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 	if(bRet){
 		memcpy(s, stack, sz);
 	}
+	mem(stack, 0);
 	return bRet;
 }
 

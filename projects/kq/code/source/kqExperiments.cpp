@@ -456,6 +456,7 @@ public:
 
 */
 
+/*
 
 class Links{
 public:
@@ -489,7 +490,7 @@ protected:
 
 	struct BitGrid{
 		USmall nBitsSet;
-		USmall * pBits;
+		USmall pBits[1];
 	};
 
 	BitGrid * m_pGridBuffer;
@@ -503,7 +504,7 @@ public:
 	Links(kq::core::memory::MemoryWorker &memworker, USmall nBytesInNodeID);
 	~Links();
 
-	bool link(PNode n1, PNode n2, void * data = 0, void ** dataOld = 0);
+	bool link(PNode n1, PNode n2, void ** data = 0, void ** dataOld = 0);	
 	bool unLink(PNode n1, PNode n2, void ** dataOld = 0);
 	bool isLinked(PNode n1, PNode n2, void ** data = 0);
 
@@ -540,30 +541,31 @@ void Links::interlace(PNode p1, PNode p2){
 		iByte++;
 	}
 }
-/*
-bool Links::link(PNode n1, PNode n2, void * data, void ** dataOld){
+
+bool Links::link(PNode n1, PNode n2, void ** data, void ** dataOld){
 	bool bRet = false;
 	interlace(n1, n2);
 
 	BPlusTree::Path pthBit(m_pBitTree);
 	BitGrid * pGridOld;
 	m_pGridBuffer = 0;
-	if(pthBit.init_moveTo(m_pAddressBuffer, &pGridOld)){
+	if(pthBit.init_moveTo(m_pAddressBuffer, (void **)&pGridOld)){
 		m_pGridBuffer = pGridOld;
 	}
 
 	if(!m_pGridBuffer){
 		gridCreate();
+		if(m_pGridBuffer){
+			pthBit.write(m_pGridBuffer);
+		}
 	}
 
 	if(m_pGridBuffer){
-		set();
+		gridSet();
 		if(data){
-			bRet = m_pDataTree->map(m_pAddressBuffer, data, dataOld);
+			m_pDataTree->map(m_pAddressBuffer, *data, dataOld);
 		}
-		else{
-
-		}
+		bRet = true;
 	}
 
 
@@ -573,7 +575,21 @@ bool Links::link(PNode n1, PNode n2, void * data, void ** dataOld){
 bool Links::unLink(PNode n1, PNode n2, void ** dataOld){
 	bool bRet = false;
 	interlace(n1, n2);
-	bRet = m_pDataTree->map(m_pAddressBuffer, 0, dataOld);
+
+	BPlusTree::Path pthBit(m_pBitTree);
+	BitGrid * pGridOld;
+	m_pGridBuffer = 0;
+	if(pthBit.init_moveTo(m_pAddressBuffer, (void **)&pGridOld)){
+		m_pGridBuffer = pGridOld;
+		gridReset();
+
+		if(!m_pGridBuffer){
+			pthBit.write(0);
+		}
+
+		bRet = m_pDataTree->map(m_pAddressBuffer, 0, dataOld);
+	}
+
 	return bRet;
 }
 
@@ -581,13 +597,44 @@ bool Links::isLinked(PNode n1, PNode n2, void ** data){
 	bool bRet = false;
 	interlace(n1, n2);
 
+	BPlusTree::Path pthBit(m_pBitTree);
+	BitGrid * pGridOld;
+	m_pGridBuffer = 0;
+	if(pthBit.init_moveTo(m_pAddressBuffer, (void **)&pGridOld)){
+		bRet = true;
+		if(*data){
+			m_pDataTree->lookup(m_pAddressBuffer);
+		}
+	}
 	return bRet;
 }
 
+void Links::gridCreate(){
+	ULarge nBytesInGrid = 1 << ((m_nBytesInOffset >> 3) - 3);
+	ULarge nSizeOfGrid = sizeof(BitGrid) + nBytesInGrid - 1;
+	m_pGridBuffer = (BitGrid *)mem(0, nSizeOfGrid);
+	if(m_pGridBuffer){
+		memset(m_pGridBuffer, 0, nSizeOfGrid);
+	}
+}
+
+void Links::gridDestroy(){
+	mem(m_pGridBuffer, 0);
+	m_pGridBuffer = 0;
+}
+
+void Links::gridSet(){
+	ui64 iByte = 0;
+	memcpy()
+}
+
+void Links::gridReset(){
+}
 */
 
+//#include "sys/time.h"
+#include "windows.h"
 
-#include "sys/time.h"
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -599,9 +646,9 @@ int main(int /*argc*/, char ** /*argv*/){
 
 
 	{
-		PooledMemoryAllocator allocPool(memStd);
-		MemoryWorker mem;
-		allocPool.getMemoryWorker(mem);
+		//PooledMemoryAllocator allocPool(memStd);
+		MemoryWorker mem = memStd;
+		//allocPool.getMemoryWorker(mem);
 
 		
 		/*
@@ -633,19 +680,19 @@ int main(int /*argc*/, char ** /*argv*/){
 		*/
 		
 
-		/*
+		
 		{
 
 			kq::core::ui8 keysizes[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 			kq::core::ui8 bits[] = {1, 2, 4, 8};
 
-			//kq::core::ui8 keysizes[] = {1};
-			//kq::core::ui8 bits[] = {4};
+			//kq::core::ui8 keysizes[] = {3};
+			//kq::core::ui8 bits[] = {1};
 
 			double results[sizeof(keysizes)][sizeof(bits)];
 			memset(results, 0, sizeof(results));
 
-			printf("Running Tests ");
+			printf("Running Tests\n");
 
 			srand(0);
 			const kq::core::ui64 nKeys = 65536;
@@ -657,10 +704,10 @@ int main(int /*argc*/, char ** /*argv*/){
 			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
 				size_t nBytesInKey = keysizes[iKeySizeIndex];
 
-				kq::core::ui64 mask = -1;
+				kq::core::ui64 mask = (ui64)-1;
 				mask = mask >> (32 - 4*nBytesInKey);
 				mask = mask >> (32 - 4*nBytesInKey);
-				//printf("mask = %llx\n", mask);
+				printf("mask = %16.16llx ", mask);
 
 
 				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
@@ -668,15 +715,22 @@ int main(int /*argc*/, char ** /*argv*/){
 					{
 						printf("."); fflush(stdout);
 						//printf("Creating\n"); fflush(stdout);
-						kq::core::data::BPlusTree bpt(mem, nBytesInKey, bits[iBitIndex]);
+						kq::core::data::BPlusTree bpt(mem, (kq::core::ui8)nBytesInKey, bits[iBitIndex]);
 
-						//printf("Created\n"); fflush(stdout);
-						ui32 depth = nBytesInKey * 8/bits[iBitIndex];
-						ui32 breadth = 1 << (ui64)bits[iBitIndex];
-						timeval t1, t2;
-						gettimeofday(&t1, 0);
+						
+						//ui32 depth = nBytesInKey * 8/bits[iBitIndex];
+						//ui32 breadth = 1 << (ui64)bits[iBitIndex];
+
+						//timeval t1, t2;
+						//gettimeofday(&t1, 0);
+
+						LARGE_INTEGER t1, t2;
+						QueryPerformanceCounter(&t1);
+						
+
+
 						kq::core::ui64 iIter = 0;
-						kq::core::ui64 nIter = (1 << (12 - nBytesInKey));
+						kq::core::ui64 nIter = (1 << (8));
 
 						//nIter = 1;
 						while(iIter < nIter){
@@ -686,9 +740,12 @@ int main(int /*argc*/, char ** /*argv*/){
 							if(bpt.lookup(&iKey) != (void*)iKey){
 								printf("Lookup Failed\n");
 							}
+
+							
+							
 							void * pVal = 0;
 							kq::core::data::BPlusTree::Path p(&bpt);
-							if(p.init_moveTo(&iKey, &pVal) && iKey != (ui64)pVal){
+							if(p.init_moveTo(&iKey, &pVal) && (void *)iKey != pVal){
 								printf("%llx >> %llx\n", iKey, (ui64)pVal);
 							}
 
@@ -696,7 +753,7 @@ int main(int /*argc*/, char ** /*argv*/){
 
 							if(p.init_first(&pVal, &iKey)){
 								do{
-									if(iKey != (ui64)pVal){
+									if((void *)iKey != pVal){
 										printf("Forward %llx >> %llx\n", iKey, (ui64)pVal);
 									}
 
@@ -707,35 +764,46 @@ int main(int /*argc*/, char ** /*argv*/){
 
 							if(p.init_last(&pVal, &iKey)){
 								do{
-									if(iKey != (ui64)pVal){
+									if((void *)iKey != pVal){
 										printf("Backward %llx >> %llx\n", iKey, (ui64)pVal);
 									}
 
 								}while(p.prev(&pVal, &iKey));
 							}
+							
+							
 
 							//test stuff end
+
 
 							iIter++;
 						}
 
-						gettimeofday(&t2, 0);
+						//gettimeofday(&t2, 0);
+						QueryPerformanceCounter(&t2);
+
 						double d1, d2, d;
-						d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
-						d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
+
+						//d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
+						//d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
+						d1 = t1.QuadPart;
+						d2 = t2.QuadPart;
+
 						double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
-						d = ((double)iIter)/((double)nMilliSecs);
+						d = ((double)iIter * iIter)/((double)nMilliSecs);
 						results[iKeySizeIndex][iBitIndex] = d;
 						//printf("KeySZ %d/%d  t=%4.4f nIter=%lld depth %d, breadth %d\n", (int)keysizes[iKeySizeIndex], 8/(int)bits[iBitIndex], nMilliSecs, iIter, depth, breadth);
 						//fflush(stdout);
 
 					}
 
-					//printf("Destroyed\n");
-
 				}
+				printf(".\n");
+
 			}
 
+
+			mem(randomKeys, 0);
 
 			printf("\n\n\n");
 			printf("Operations Per Millisecond Table\n\nLevels\t");
@@ -759,7 +827,7 @@ int main(int /*argc*/, char ** /*argv*/){
 			//bpt.dump();
 
 		}
-		*/
+		
 		
 
 	}
