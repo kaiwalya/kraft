@@ -46,6 +46,7 @@ BPlusTree::~BPlusTree(){
 	//LOGINOUT;
 	//mem(m_pNibbleMasks, 0);
 
+	/*
 	
 	kq::core::ui64 iLeftForDead = 0;
 
@@ -89,27 +90,21 @@ BPlusTree::~BPlusTree(){
 		}
 	}
 
-	
-	/*
-
-	Path p(this);
-	void * pKeyOld = mem(0, m_nBytesInKey);
-	void * pKeyNew = mem(0, m_nBytesInKey);
-	if(pKeyOld && pKeyNew){
-		if(p.init_first(0, pKeyOld)){
-			while(p.next(0, pKeyNew)){
-				destroy(pKeyOld);
-				{
-					void * pTemp = pKeyNew;
-					pKeyNew = pKeyOld;
-					pKeyOld = pTemp;
-				}
-			}
-		}
-	}
-	mem(pKeyNew, 0);
-	mem(pKeyOld, 0);
 	*/
+	
+	
+
+	Path p1(this);
+	Path p2(this);
+	if(p1.init_first()){
+		p2 = p1;
+		while(p2.next()){
+			p1.write(0);
+			p1 = p2;
+		}
+		p1.write(0);
+	}
+
 }
 
 
@@ -223,48 +218,51 @@ void ** BPlusTree::findOrCreate(void * k){
 	return ppRet;
 }
 
+bool BPlusTree::destroyStack(Stack s, void ** oldValue){
+	if(oldValue){
+		*oldValue = *s[m_nLevelsInStack - 1];
+	}
+	*s[m_nLevelsInStack - 1] = 0;
+
+	bool bRet = true;
+	ULarge iChild;
+	ULarge nDeadChildren;
+
+	USmall iNibble = m_nLevelsInStack - 1;
+	while(iNibble > 0){
+		iChild = 0;
+		nDeadChildren = 0;
+		void ** ppFirstChild = (void **)*s[iNibble-1];
+
+		while(iChild < m_nChildrenPerNode){
+			if(!ppFirstChild[iChild]){
+				nDeadChildren++;
+				iChild++;
+				continue;
+			}
+			break;
+		}
+		if(nDeadChildren != m_nChildrenPerNode){
+			break;
+		}
+		//LOGDEPTH;
+		//printf("*(%p) [%p -> 0]\n", pppPath[iNibble-1], *pppPath[iNibble-1]);
+		mem(ppFirstChild, 0);
+		*s[iNibble-1] = 0;
+
+		iNibble--;
+	}
+	return bRet;
+}
+
 bool BPlusTree::destroy(void * pKey, void ** oldValue){
 	//LOGINOUT;
 	bool bRet = false;
-	USmall nNibbles = m_nNibblesInKey;
-	USmall iNibble = 0;
-
-	void *** pppPath = (void ***)mem(0, (nNibbles + 1) * sizeof(void **));
-	if(pppPath){
-		pppPath[iNibble] = &m_pRoot;
-		path(pppPath, iNibble, (kq::core::ui8 *)pKey);
-		if(iNibble == nNibbles){
-			if(oldValue){
-				*oldValue = *pppPath[nNibbles];
-			}
-			*pppPath[nNibbles] = 0;
-
-			bRet = true;
-			ULarge iChild;
-			ULarge nDeadChildren;
-
-			while(iNibble > 0){
-				iChild = 0;
-				nDeadChildren = 0;
-				void ** ppFirstChild = (void **)*pppPath[iNibble-1];
-
-				while(iChild < m_nChildrenPerNode){
-					if(!ppFirstChild[iChild]){
-						nDeadChildren++;
-						iChild++;
-						continue;
-					}
-					break;
-				}
-				if(nDeadChildren != m_nChildrenPerNode){
-					break;
-				}
-				//LOGDEPTH;
-				//printf("*(%p) [%p -> 0]\n", pppPath[iNibble-1], *pppPath[iNibble-1]);
-				mem(ppFirstChild, 0);
-				*pppPath[iNibble-1] = 0;
-
-				iNibble--;
+	Stack pppPath = stackCreate();
+	if(pppPath){		
+		if(getStackFromKey(pppPath, pKey)){
+			if(destroyStack(pppPath, oldValue)){
+				bRet = true;
 			}
 		}
 		mem(pppPath, 0);
@@ -298,7 +296,7 @@ void BPlusTree::move(void *** pppCurr, USmall & iKeyNibble, kq::core::ui8 * pKey
 }
 
 
-BPlusTree::Stack BPlusTree::createStack(){
+BPlusTree::Stack BPlusTree::stackCreate(){
 	const ULarge sz = m_nSizeOfStack;
 	BPlusTree::Stack s = (BPlusTree::Stack)mem(0, sz);
 	if(s){
@@ -307,8 +305,12 @@ BPlusTree::Stack BPlusTree::createStack(){
 	}
 	return s;
 }
-void BPlusTree::destroyStack(BPlusTree::Stack s){
+void BPlusTree::stackDestroy(BPlusTree::Stack s){
 	mem(s, 0);
+}
+
+void BPlusTree::stackCopy(kq::core::data::BPlusTree::Stack sOut, kq::core::data::BPlusTree::Stack sIn){
+	memcpy(sOut, sIn, m_nSizeOfStack);
 }
 
 
@@ -338,14 +340,14 @@ bool BPlusTree::getStackFromKey(BPlusTree::Stack s, void * k){
 	const ULarge nNibbles = m_nNibblesInKey;
 	USmall iNibble = 0;
 	bool bRet = false;
-	BPlusTree::Stack stack = createStack();
+	BPlusTree::Stack stack = stackCreate();
 	if(stack){
 		path(stack, iNibble, (kq::core::ui8 *)k);
 		if(iNibble == nNibbles){
 			bRet = true;
 			memcpy(s, stack, m_nSizeOfStack);
 		}
-		destroyStack(stack);
+		stackDestroy(stack);
 	}
 	return bRet;
 }
@@ -356,8 +358,13 @@ void * BPlusTree::readValueAtStack(BPlusTree::Stack s){
 }
 
 void BPlusTree::writeValueAtStack(BPlusTree::Stack s, void * v){
-	const ULarge nNibbles = m_nNibblesInKey;
-	*s[nNibbles] = v;
+	if(!v){
+		destroyStack(s, 0);
+	}else{
+		const ULarge nNibbles = m_nNibblesInKey;
+		*s[nNibbles] = v;
+	}
+	
 }
 
 
@@ -468,11 +475,11 @@ bool BPlusTree::Path::move(void ** v, void * k, SSmall iDirection){
 bool BPlusTree::Path::init(void ** v, void * k, SSmall iDirection){
 	bool bRet = false;
 	if(s){
-		tree->destroyStack(s);
+		tree->stackDestroy(s);
 		s = 0;
 	}
 
-	s = tree->createStack();
+	s = tree->stackCreate();
 
 	if(s){
 		if(iDirection){
@@ -491,7 +498,7 @@ bool BPlusTree::Path::init(void ** v, void * k, SSmall iDirection){
 		}
 
 		if(!bRet){
-			tree->destroyStack(s);
+			tree->stackDestroy(s);
 			s = 0;
 		}
 	}
@@ -500,6 +507,39 @@ bool BPlusTree::Path::init(void ** v, void * k, SSmall iDirection){
 
 BPlusTree::Path::Path(BPlusTree * pTree): tree(pTree),s(0){
 	
+}
+
+const BPlusTree::Path & BPlusTree::Path::operator =(const BPlusTree::Path & other){
+
+	if(tree != other.tree){
+		if(tree->m_nLevelsInStack != other.tree->m_nLevelsInStack){
+			if(s){
+				tree->stackDestroy(s);
+				s = 0;
+			}
+			
+		}
+		tree = other.tree;
+
+	}
+
+	if(other.s){
+		if(!s){
+			s = tree->stackCreate();
+		}
+		if(s){
+			tree->stackCopy(s, other.s);
+		}
+	}
+	else{
+		if(s){
+			tree->stackDestroy(s);
+			s = 0;
+		}
+	}
+
+	return *this;
+
 }
 
 bool BPlusTree::Path::next(void ** v, void * k){
@@ -538,7 +578,7 @@ void BPlusTree::Path::write(void * v){
 BPlusTree::Path::~Path(){
 	//printf("Path destroying\n");fflush(stdout);
 	if(s){
-		tree->destroyStack(s);
+		tree->stackDestroy(s);
 		s = 0;
 	}
 	//printf("Path destroyed\n");fflush(stdout);

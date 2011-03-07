@@ -62,8 +62,9 @@ namespace kq{
 				const ULarge m_nSizeOfStack;
 
 				typedef void *** Stack;
-				Stack createStack();
-				void destroyStack(Stack s);
+				Stack stackCreate();
+				void stackDestroy(Stack s);
+				void stackCopy(Stack sOut, Stack sIn);
 				bool getStackFromKey(Stack s, void * k);
 				void getKeyFromStack(void * k, Stack s);
 				void * readValueAtStack(Stack s);
@@ -71,6 +72,7 @@ namespace kq{
 				bool nextleaf(Stack s, SSmall iDirection = 1);
 				void path(Stack s, USmall & iKeyNibble, kq::core::ui8 * pKey);
 				void dumpStack(Stack s);
+				bool destroyStack(Stack s, void ** oldValue);
 
 			//Public facing class to use for iteration
 			public:
@@ -79,9 +81,12 @@ namespace kq{
 					Stack s;
 					bool move(void ** v, void * k, SSmall iDirection);
 					bool init(void ** v, void * k, SSmall iDirection);
+					
 				public:
 					Path(BPlusTree * pTree);
 					~Path();
+					const Path & operator = (const Path &);
+
 					bool next(void ** v = 0, void * k = 0);
 					bool prev(void ** v = 0, void * k = 0);
 					bool init_first(void ** v = 0, void * k = 0);

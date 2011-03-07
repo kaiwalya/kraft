@@ -636,9 +636,53 @@ void Links::gridReset(){
 #include "windows.h"
 
 
+typedef kq::core::ui32 UCount;
+
+
+class IHead{
+	//kq::core::memory::Pointer<ITape> m_pTape;
+public:
+	
+	UCount move(UCount units, UCount direction){
+		units;
+		direction;
+		return 0;
+	}
+
+	bool read(void const ** location, UCount * units){
+		*location = 0;
+		* units = 0;
+		return false;
+	};
+
+	bool write(void const * location, UCount units){
+		units;
+		location;
+		return false;
+	}
+
+};
+
+
+
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
 	
+
+	/*
+	IHead h;
+	void const * p1;
+	UCount n1;
+
+	h.read(&p1, &n1);
+
+	void const *  p2 = 0;
+	UCount const n2 = 0;
+
+
+	h.write(p2, n2);
+	*/
+
 	//Create std allocator
 	StandardLibraryMemoryAllocator allocStd;
 	MemoryWorker memStd;
