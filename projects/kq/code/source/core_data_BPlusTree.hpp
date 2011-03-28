@@ -45,14 +45,14 @@ namespace kq{
 			public:
 				BPlusTree(kq::core::memory::MemoryWorker memworker, USmall bytesInKey, USmall bitsPerLevel = 4);
 				~BPlusTree();
-				bool map(void * key, void * newV, void ** oldV = 0);
-				void * lookup(void * key);
+				bool map(const void * key, void * newV, void ** oldV = 0);
+				void * lookup(const void * key);
 
 			protected:
-				void ** find(void * k);
-				void ** findOrCreate(void * k);
-				bool destroy(void * pKey, void ** oldValue = 0);
-				void move(void *** pppCurr, USmall & iKeyNibble, kq::core::ui8 * pKey);
+				void ** find(const void * k);
+				void ** findOrCreate(const void * k);
+				bool destroy(const void * pKey, void ** oldValue = 0);
+				void move(void *** pppCurr, USmall & iKeyNibble, const kq::core::ui8 * pKey);
 
 			//Stack Features, Iteration etc
 			protected:
@@ -65,7 +65,7 @@ namespace kq{
 				Stack stackCreate();
 				void stackDestroy(Stack s);
 				void stackCopy(Stack sOut, Stack sIn);
-				bool getStackFromKey(Stack s, void * k);
+				bool getStackFromKey(Stack s, const void * k);
 				void getKeyFromStack(void * k, Stack s);
 				void * readValueAtStack(Stack s);
 				void writeValueAtStack(Stack s, void * v);
@@ -81,7 +81,7 @@ namespace kq{
 					Stack s;
 					bool move(void ** v, void * k, SSmall iDirection);
 					bool init(void ** v, void * k, SSmall iDirection);
-					
+
 				public:
 					Path(BPlusTree * pTree);
 					~Path();
@@ -103,6 +103,8 @@ namespace kq{
 
 
 			};
+
+			bool BPlusTree_test(kq::core::memory::MemoryWorker &mem);
 
 
 		}

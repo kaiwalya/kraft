@@ -35,10 +35,10 @@ BPlusTree::BPlusTree(kq::core::memory::MemoryWorker memworker, USmall bytesInKey
 			m_pNibbleMasks[iBit] = m_pNibbleMasks[iBit - 1] << m_nBitsPerLevel;
 			iBit++;
 		}
-		
+
 	}
 
-	
+
 }
 
 
@@ -47,7 +47,7 @@ BPlusTree::~BPlusTree(){
 	//mem(m_pNibbleMasks, 0);
 
 	/*
-	
+
 	kq::core::ui64 iLeftForDead = 0;
 
 	if(m_nBytesInKey && m_pRoot){
@@ -91,8 +91,8 @@ BPlusTree::~BPlusTree(){
 	}
 
 	*/
-	
-	
+
+
 
 	Path p1(this);
 	Path p2(this);
@@ -108,7 +108,7 @@ BPlusTree::~BPlusTree(){
 }
 
 
-bool BPlusTree::map(void * key, void * newV, void ** oldV){
+bool BPlusTree::map(const void * key, void * newV, void ** oldV){
 	bool bRet = false;
 	if(newV){
 		void ** pLocation = findOrCreate(key);
@@ -136,7 +136,7 @@ bool BPlusTree::map(void * key, void * newV, void ** oldV){
 	return bRet;
 }
 
-void * BPlusTree::lookup(void * key){
+void * BPlusTree::lookup(const void * key){
 	void ** loc = find(key);
 	if(loc){
 		return *loc;
@@ -144,13 +144,13 @@ void * BPlusTree::lookup(void * key){
 	return 0;
 }
 
-void ** BPlusTree::find(void * k){
+void ** BPlusTree::find(const void * k){
 
 	//LOGINOUT;
-	kq::core::ui8 * pKey = (kq::core::ui8 *)k;
+	const kq::core::ui8 * pKey = (const kq::core::ui8 *)k;
 	USmall iKeyNibble = 0;
 	USmall nKeyNibbles = m_nNibblesInKey;
-	
+
 
 	void ** ppRet = 0;
 
@@ -161,15 +161,15 @@ void ** BPlusTree::find(void * k){
 		ppRet = ppCurr;
 	}
 	return ppRet;
-	
+
 }
 
-void ** BPlusTree::findOrCreate(void * k){
+void ** BPlusTree::findOrCreate(const void * k){
 	//LOGINOUT;
 	kq::core::ui8 * pKey = (kq::core::ui8 *)k;
 	USmall iKeyNibble = 0;
 	USmall nKeyNibbles = m_nNibblesInKey;
-	
+
 
 	void ** ppRet = 0;
 
@@ -177,7 +177,7 @@ void ** BPlusTree::findOrCreate(void * k){
 	void ** ppCurr = &m_pRoot;
 	move(&ppCurr, iKeyNibble, pKey);
 
-	if(iKeyNibble < nKeyNibbles){			
+	if(iKeyNibble < nKeyNibbles){
 		ULarge nSizeLevel = sizeof(void *) * m_nChildrenPerNode;
 
 		void ** pTempLevels = (void **)mem(0, sizeof(void *) * (nKeyNibbles - iKeyNibble));
@@ -197,11 +197,11 @@ void ** BPlusTree::findOrCreate(void * k){
 			if(iNibble != 0){
 				while(iNibble < nNibbles) mem(pTempLevels[iNibble++], 0);
 			}
-			else{					
+			else{
 				iNibble = 0;
 				while(iKeyNibble < nKeyNibbles){
-					
-					*ppCurr = pTempLevels[iNibble++];						
+
+					*ppCurr = pTempLevels[iNibble++];
 					move(&ppCurr, iKeyNibble, pKey);
 				}
 
@@ -255,11 +255,11 @@ bool BPlusTree::destroyStack(Stack s, void ** oldValue){
 	return bRet;
 }
 
-bool BPlusTree::destroy(void * pKey, void ** oldValue){
+bool BPlusTree::destroy(const void * pKey, void ** oldValue){
 	//LOGINOUT;
 	bool bRet = false;
 	Stack pppPath = stackCreate();
-	if(pppPath){		
+	if(pppPath){
 		if(getStackFromKey(pppPath, pKey)){
 			if(destroyStack(pppPath, oldValue)){
 				bRet = true;
@@ -271,7 +271,7 @@ bool BPlusTree::destroy(void * pKey, void ** oldValue){
 	return bRet;
 }
 
-void BPlusTree::move(void *** pppCurr, USmall & iKeyNibble, kq::core::ui8 * pKey){
+void BPlusTree::move(void *** pppCurr, USmall & iKeyNibble, const kq::core::ui8 * pKey){
 
 	USmall nKeyNibbles = m_nNibblesInKey;
 	USmall iInnerKeyNibble = m_nNibblesInKey - iKeyNibble - 1;
@@ -283,7 +283,7 @@ void BPlusTree::move(void *** pppCurr, USmall & iKeyNibble, kq::core::ui8 * pKey
 		USmall iByte = iInnerKeyNibble / m_nNibblesPerByte;
 		USmall iNibbleID = iInnerKeyNibble % m_nNibblesPerByte;
 
-		USmall & byte = pKey[iByte];
+		const USmall & byte = pKey[iByte];
 		USmall maskedByte = byte & m_pNibbleMasks[iNibbleID];
 		halfKey = (maskedByte >> (m_nBitsPerLevel * (iNibbleID)));
 		*pppCurr = ((void**)**pppCurr) + halfKey;
@@ -336,7 +336,7 @@ void BPlusTree::getKeyFromStack(void * k, BPlusTree::Stack s){
 
 };
 
-bool BPlusTree::getStackFromKey(BPlusTree::Stack s, void * k){
+bool BPlusTree::getStackFromKey(BPlusTree::Stack s, const void * k){
 	const ULarge nNibbles = m_nNibblesInKey;
 	USmall iNibble = 0;
 	bool bRet = false;
@@ -364,7 +364,7 @@ void BPlusTree::writeValueAtStack(BPlusTree::Stack s, void * v){
 		const ULarge nNibbles = m_nNibblesInKey;
 		*s[nNibbles] = v;
 	}
-	
+
 }
 
 
@@ -381,7 +381,7 @@ bool BPlusTree::nextleaf(BPlusTree::Stack s, SSmall iDirection){
 		iNibble--;
 	}
 
-	
+
 	void ** pChildren; ;
 	while(iNibble > 0 && iNibble <= nNibbles && ((pChildren = (void **)*stack[iNibble - 1])!= 0)){
 		SLarge iChild = (1 - iDirection) / 2 * (m_nChildrenPerNode -1);
@@ -506,7 +506,7 @@ bool BPlusTree::Path::init(void ** v, void * k, SSmall iDirection){
 }
 
 BPlusTree::Path::Path(BPlusTree * pTree): tree(pTree),s(0){
-	
+
 }
 
 const BPlusTree::Path & BPlusTree::Path::operator =(const BPlusTree::Path & other){
@@ -517,7 +517,7 @@ const BPlusTree::Path & BPlusTree::Path::operator =(const BPlusTree::Path & othe
 				tree->stackDestroy(s);
 				s = 0;
 			}
-			
+
 		}
 		tree = other.tree;
 
@@ -601,6 +601,259 @@ void BPlusTree::dump(){
 	}
 }
 
+#include "stdio.h"
+#include "stdlib.h"
+#include "memory.h"
+#include "sys/time.h"
+
+
+bool BPlusTree_test(kq::core::memory::MemoryWorker &mem){
+
+		{
+
+			kq::core::ui8 keysizes[] = {1, 2, 3, 4, 5, 6, 7, 8};
+			kq::core::ui8 bits[] = {1, 2, 4, 8};
+
+			//kq::core::ui8 keysizes[] = {1};
+			//kq::core::ui8 bits[] = {8};
+
+			double results[sizeof(keysizes)][sizeof(bits)];
+			memset(results, 0, sizeof(results));
+
+			printf("Running Tests\n");
+
+			srand(0);
+			const kq::core::ui64 nKeys = 65536;
+			ui64 * randomKeys = (ui64 *)mem(0, sizeof(ui64) * nKeys);
+			void ** randomValues = (void **)mem(0, sizeof(void *) * nKeys);
+			for(kq::core::ui64 iKeyIndex = 0; iKeyIndex < nKeys; iKeyIndex++){
+				randomKeys[iKeyIndex] =
+					(ui64)rand() << 56 |
+					(ui64)rand() << 48 |
+					(ui64)rand() << 40 |
+					(ui64)rand() << 32 |
+					(ui64)rand() << 24 |
+					(ui64)rand() << 16 |
+					(ui64)rand() <<  8 |
+					(ui64)rand() <<  0 ;
+
+				randomValues[iKeyIndex] = (void *)(
+					(ui64)rand() << 56 |
+					(ui64)rand() << 48 |
+					(ui64)rand() << 40 |
+					(ui64)rand() << 32 |
+					(ui64)rand() << 24 |
+					(ui64)rand() << 16 |
+					(ui64)rand() <<  8 |
+					(ui64)rand() <<  0 );
+
+			}
+
+			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
+				size_t nBytesInKey = keysizes[iKeySizeIndex];
+
+				kq::core::ui64 mask = (ui64)-1;
+				mask = mask >> (32 - 4*nBytesInKey);
+				mask = mask >> (32 - 4*nBytesInKey);
+				//printf("mask = %16.16llx ", mask);
+
+
+				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+
+					{
+						printf("."); fflush(stdout);
+						//printf("Creating\n"); fflush(stdout);
+						kq::core::data::BPlusTree bpt1(mem, (kq::core::ui8)nBytesInKey, bits[iBitIndex]);
+						kq::core::data::BPlusTree bpt2(mem, (kq::core::ui8)nBytesInKey, bits[iBitIndex]);
 
 
 
+						timeval t1, t2;
+						gettimeofday(&t1, 0);
+
+						//LARGE_INTEGER t1, t2;
+						//QueryPerformanceCounter(&t1);
+
+
+
+						kq::core::ui64 nIter;
+						nIter = (1 << (13));
+						kq::core::ui64 iIter = 0;
+						kq::core::ui64 iIndex;
+						while(iIter < nIter){
+
+							iIndex = ((randomKeys[iIter%nKeys])%nKeys) & mask;
+
+							if(bpt1.map(&randomKeys[iIndex], randomValues[iIndex])){
+								if(bpt1.lookup(&randomKeys[iIndex]) != randomValues[iIndex]){
+									printf("Error! Lookup Test Failed\n");
+								}
+							}
+							else{
+								printf("Error! Could not map\n");
+							}
+
+							iIter++;
+						}
+						{
+
+							kq::core::data::BPlusTree::Path p(&bpt1);
+
+							kq::core::ui64 nNextMoves =0;
+							{
+								if(p.init_first()){
+									nNextMoves++;
+									while(p.next()){
+										nNextMoves++;
+									}
+								}
+							}
+
+
+							kq::core::ui64 nPrevMoves =0;
+							{
+								if(p.init_last()){
+									nPrevMoves++;
+									while(p.prev()){
+										nPrevMoves++;
+									}
+								}
+
+							}
+
+
+							if(nPrevMoves != nNextMoves){
+								printf("First Iteration count mismatch\n");
+							}
+
+							if((nPrevMoves < mask/2 || nNextMoves < mask/2) && (nNextMoves < nIter/2 || nPrevMoves < nIter/2 )){
+								printf("First Warning Some thing is wrong\n");
+							}
+						}
+
+
+
+						ui64 nIter2 = 512;
+						iIter = 0;
+						while(iIter < nIter2){
+
+							iIndex = (mask & iIter)%nKeys;
+
+							bpt2.map(&iIndex, randomValues[iIndex]);
+
+							iIter++;
+						}
+
+						kq::core::data::BPlusTree::Path p(&bpt2);
+
+						iIter = 0;
+						while(iIter < nIter2){
+							iIndex = (mask & iIter)%nKeys;
+							void * pVal = 0;
+							if(!p.init_moveTo(&iIndex, &pVal) || pVal != randomValues[iIndex]){
+								printf("Error! MoveTo Test Failed\n");
+							}
+
+							iIter++;
+						}
+
+						kq::core::ui64 nNextMoves =0;
+						{
+							void * pVal;
+							if(p.init_first(&pVal, &iIndex) && (pVal == randomValues[iIndex%nKeys])){
+								nNextMoves++;
+								while(p.next(&pVal, &iIndex)){
+									if(pVal != randomValues[iIndex]){
+										printf("Error! Next Test Failed\n");
+									}
+
+									nNextMoves++;
+								}
+
+							}
+						}
+
+
+						kq::core::ui64 nPrevMoves =0;
+						{
+							void * pVal;
+							if(p.init_last(&pVal, &iIndex) && (pVal == randomValues[iIndex])){
+								nPrevMoves++;
+								while(p.prev(&pVal, &iIndex)){
+									if(pVal != randomValues[iIndex]){
+										printf("Error! Next Test Failed\n");
+									}
+
+									nPrevMoves++;
+								}
+							}
+
+						}
+
+
+						if(nPrevMoves != nNextMoves){
+							printf("Iteration count mismatch\n");
+						}
+
+						if((nPrevMoves < mask/2 || nNextMoves < mask/2) && (nNextMoves < nIter2/2 || nPrevMoves < nIter2/2)){
+							printf("Warning Some thing is wrong\n");
+						}
+
+
+						//ui32 depth = nBytesInKey * 8/bits[iBitIndex];
+						//ui32 breadth = 1 << (ui64)bits[iBitIndex];
+
+
+						gettimeofday(&t2, 0);
+						//QueryPerformanceCounter(&t2);
+
+						double d1, d2, d;
+
+						d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
+						d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
+						//d1 = t1.QuadPart;
+						//d2 = t2.QuadPart;
+
+						double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
+						d = ((double)nIter)/((double)nMilliSecs);
+						results[iKeySizeIndex][iBitIndex] = d;
+						//printf("KeySZ %d/%d  t=%4.4f nIter=%lld depth %d, breadth %d\n", (int)keysizes[iKeySizeIndex], 8/(int)bits[iBitIndex], nMilliSecs, iIter, depth, breadth);
+						//fflush(stdout);
+
+						//bpt.dump();
+					}
+
+				}
+				//printf(".\n");
+
+			}
+
+
+			mem(randomKeys, 0);
+			mem(randomValues, 0);
+
+			printf("\n\n\n");
+			printf("Operations Per Millisecond Table\n\nLevels\t");
+			for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+				printf("%4dx\t", 8/bits[iBitIndex]);
+			}
+			printf("\nKeyLen\n");
+			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
+				size_t nBytesInKey = keysizes[iKeySizeIndex];
+
+				printf("%.4d\t", (int)nBytesInKey);
+
+				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
+					printf("%4.0f\t", results[iKeySizeIndex][iBitIndex]);
+				}
+
+				printf("\n");
+			}
+
+
+			printf("\n");
+			//bpt.dump();
+
+		}
+
+}

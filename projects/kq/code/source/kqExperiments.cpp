@@ -56,22 +56,22 @@ public:
 namespace kq{
 
 	namespace flows{
-		
-		
+
+
 		class IResource{
 		public:
 			//The locks can be used as follows
 			virtual bool lockResource(bool bExclusive) = 0;
 			virtual bool unlockResource() = 0;
 		};
-		
+
 		class IFlowWriter: public IResource{
 			//When a writer is exclusively locked by a processor it means that only that processor can write to this flow.
 			//When a writer is shared locked by a processor multiple processors can atomically write to the flow
 		public:
 			virtual void write(const void * pBytes, kq::core::ui64 nBytes);
 		};
-		
+
 		class IFlowReader: public IResource{
 		public:
 			virtual void read(void * pBytes, kq::core::ui64 nBytes);
@@ -91,10 +91,10 @@ namespace kq{
 			virtual kq::core::memory::Pointer<IFlowReader> getFlowReader(kq::core::ui64 iFlow) = 0;
 			virtual void readRecord(void ** pBytes, kq::core::ui64 * nBytes) = 0;
 		};
-		
-		
+
+
 		class IFlowInterfaceDescriptor{
-			
+
 		public:
 			virtual void getNumberOfInputOutputStreams(kq::core::ui64 * pInputs, kq::core::ui64 * pOutputs) = 0;
 			//e.g. 2, 1
@@ -104,7 +104,7 @@ namespace kq{
 			//Reads from input streams...processes....writes to output streams
 			//Lifecycle: construct...(attach, work, detach)^n....desctruct
 		public:
-			
+
 			//Sets the output and input streams, acquire locks if required, if not locked queues might be shared.
 			virtual void attachFlows(kq::core::memory::Pointer<IFlowWriterTuple> inputs, kq::core::memory::Pointer<IFlowReaderTuple> outputs) = 0;
 
@@ -112,17 +112,17 @@ namespace kq{
 			//It is recommended to not do thread local stuff (TLS, etc)
 			//Once doWork returns..the object may be destroyed or attach may be called
 			virtual void doWork() = 0;
-			
+
 			//Detaches the input output streams...remove any references held on streams
 			virtual void detachFlows() = 0;
 		};
-		
+
 		class IProcess:public IFlowInterfaceDescriptor{
 			//Represents a process and creates IProcessor objects which actually process streams of data
 			//e.g. "The process of merging 2 streams into one
-			
+
 		public:
-			
+
 			virtual kq::core::memory::Pointer<IProcessor> generateProcessor() = 0;
 			//Create a IWorker object
 		};
@@ -138,14 +138,14 @@ namespace kq{
 
 
 
-		
+
 
 		class Machine;
 		class Value{
 
 			Machine * m_pMachine;
 			kq::core::memory::Pointer<IProcessor> m_pProcessor;
-			
+
 			friend class Machine;
 			Value(Machine * pMachine){
 				LOGINOUT;
@@ -157,7 +157,7 @@ namespace kq{
 				m_pProcessor = pProcessor;
 			}
 
-			
+
 		public:
 			//Once this is called this value can no longer be used by the user
 			//This means we can start deleting any stored data on the attached flow.
@@ -168,12 +168,12 @@ namespace kq{
 
 		typedef kq::core::memory::Pointer<Value> Variable;
 
-		
+
 		class Machine{
 
-			
+
 			kq::core::memory::MemoryWorker mem;
-			
+
 			struct EdgeNode{
 				Variable pSrc;
 				Variable pDest;
@@ -183,7 +183,7 @@ namespace kq{
 
 			typedef kq::core::memory::Pointer<EdgeNode> PEdgeNode;
 			PEdgeNode m_pRoot;
-			
+
 		public:
 
 			Machine(kq::core::memory::MemoryWorker & memory):mem(memory){
@@ -213,7 +213,7 @@ namespace kq{
 
 				return false;
 			}
-			
+
 			static bool confirmFlow(Variable pSrc, Variable pDest){
 				LOGINOUT;
 				return (pSrc && pDest && pSrc->m_pMachine && (pSrc->m_pMachine == pDest->m_pMachine) && pSrc->m_pMachine->_confirmFlow(pSrc, pDest));
@@ -228,7 +228,7 @@ namespace kq{
 
 		};
 
-		
+
 		void operator >> (Variable a, Variable b){
 			LOGINOUT;
 			Machine::confirmFlow(a, b);
@@ -302,7 +302,7 @@ public:
 
 
 class Test{
-	
+
 public:
 
 	int a;
@@ -316,7 +316,7 @@ class TreeMap{
 
 public:
 	struct Node{
-		
+
 		Node *** children;
 		Node * parent;
 		kq::core::ui8 parentIndex;
@@ -504,7 +504,7 @@ public:
 	Links(kq::core::memory::MemoryWorker &memworker, USmall nBytesInNodeID);
 	~Links();
 
-	bool link(PNode n1, PNode n2, void ** data = 0, void ** dataOld = 0);	
+	bool link(PNode n1, PNode n2, void ** data = 0, void ** dataOld = 0);
 	bool unLink(PNode n1, PNode n2, void ** dataOld = 0);
 	bool isLinked(PNode n1, PNode n2, void ** data = 0);
 
@@ -632,8 +632,8 @@ void Links::gridReset(){
 }
 */
 
-//#include "sys/time.h"
-#include "windows.h"
+#include "sys/time.h"
+//#include "windows.h"
 
 
 typedef kq::core::ui32 UCount;
@@ -642,7 +642,7 @@ typedef kq::core::ui32 UCount;
 class IHead{
 	//kq::core::memory::Pointer<ITape> m_pTape;
 public:
-	
+
 	UCount move(UCount units, UCount direction){
 		units;
 		direction;
@@ -663,25 +663,11 @@ public:
 
 };
 
-
+#include "ui.hpp"
+using namespace kq::ui;
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
-	
-
-	/*
-	IHead h;
-	void const * p1;
-	UCount n1;
-
-	h.read(&p1, &n1);
-
-	void const *  p2 = 0;
-	UCount const n2 = 0;
-
-
-	h.write(p2, n2);
-	*/
 
 	//Create std allocator
 	StandardLibraryMemoryAllocator allocStd;
@@ -690,290 +676,37 @@ int main(int /*argc*/, char ** /*argv*/){
 
 
 	{
-		//PooledMemoryAllocator allocPool(memStd);
-		MemoryWorker mem = memStd;
-		//allocPool.getMemoryWorker(mem);
+	    MemoryWorker mem = memStd;
+		PooledMemoryAllocator allocPool(memStd);
+		allocPool.getMemoryWorker(mem);
 
-		
-		/*
-		flows::Machine m(mem);
+        //kq::core::data::BPlusTree_test(mem);
 
-		{
-			flows::Variable a,b;
-			kq::core::memory::RefCounter * p = kq_core_memory_workerRefCountedClassNew(mem, Input);
-			//p->increment();
-			Pointer<Input> pInput = p;
-			Pointer<Output> pOutput = kq_core_memory_workerRefCountedClassNew(mem, Output);
-			a = m.variableFromProcessor(pInput.castStatic<IProcessor>());
-			b = m.variableFromProcessor(pOutput.castStatic<IProcessor>());
+        kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
+        pUI = kq::ui::UserInterface::createInstance(mem);
+        if(pUI){
 
-			a >> b;
-		}
+        	int iScreen, nScreens;
+        	nScreens = pUI->getScreenCount();
 
-		Test * arrInt = kq_core_memory_workerArrayNew(mem, Test, 3);
-		kq_core_memory_workerArrayDelete(mem, Test, arrInt);
+        	for(iScreen = 0; iScreen < nScreens; iScreen++){
+        		Pointer<Screen> pScreen;
+        		pScreen = pUI->getScreen(iScreen);
+        		if(pScreen){
+        			printf("Got Screen %d\n", iScreen);
+        		}
+        		else{
+        			printf("Error getting Screen %d\n", iScreen);
 
-		
-		{
-			Pointer<Test> pArr (kq_core_memory_workerRefCountedArrayNew(mem, Test, 3));
-			pArr += 2;
-			pArr[-2].a = 0;
-			pArr[-1].a = 1;
-			(pArr + 0)->a = 2;
-		}
-		*/
-		
+        		}
+           		pUI->getScreen(0);
+        	}
+        }
 
-		
-		{
-
-			kq::core::ui8 keysizes[] = {1, 2, 3, 4, 5, 6, 7, 8};
-			kq::core::ui8 bits[] = {1, 2, 4, 8};
-
-			//kq::core::ui8 keysizes[] = {1};
-			//kq::core::ui8 bits[] = {8};
-
-			double results[sizeof(keysizes)][sizeof(bits)];
-			memset(results, 0, sizeof(results));
-
-			printf("Running Tests\n");
-
-			srand(0);
-			const kq::core::ui64 nKeys = 65536;
-			ui64 * randomKeys = (ui64 *)mem(0, sizeof(ui64) * nKeys);
-			void ** randomValues = (void **)mem(0, sizeof(void *) * nKeys);
-			for(kq::core::ui64 iKeyIndex = 0; iKeyIndex < nKeys; iKeyIndex++){
-				randomKeys[iKeyIndex] =
-					(ui64)rand() << 56 |
-					(ui64)rand() << 48 |
-					(ui64)rand() << 40 |
-					(ui64)rand() << 32 |
-					(ui64)rand() << 24 |
-					(ui64)rand() << 16 |
-					(ui64)rand() <<  8 |
-					(ui64)rand() <<  0 ;
-
-				randomValues[iKeyIndex] = (void *)(
-					(ui64)rand() << 56 |
-					(ui64)rand() << 48 |
-					(ui64)rand() << 40 |
-					(ui64)rand() << 32 |
-					(ui64)rand() << 24 |
-					(ui64)rand() << 16 |
-					(ui64)rand() <<  8 |
-					(ui64)rand() <<  0 );
-				
-			}
-
-			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
-				size_t nBytesInKey = keysizes[iKeySizeIndex];
-
-				kq::core::ui64 mask = (ui64)-1;
-				mask = mask >> (32 - 4*nBytesInKey);
-				mask = mask >> (32 - 4*nBytesInKey);
-				//printf("mask = %16.16llx ", mask);
-
-
-				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
-
-					{
-						printf("."); fflush(stdout);
-						//printf("Creating\n"); fflush(stdout);
-						kq::core::data::BPlusTree bpt1(mem, (kq::core::ui8)nBytesInKey, bits[iBitIndex]);
-						kq::core::data::BPlusTree bpt2(mem, (kq::core::ui8)nBytesInKey, bits[iBitIndex]);
-
-						
-						
-						//timeval t1, t2;
-						//gettimeofday(&t1, 0);
-
-						LARGE_INTEGER t1, t2;
-						QueryPerformanceCounter(&t1);
-						
-
-
-						kq::core::ui64 nIter;
-						nIter = (1 << (13));
-						kq::core::ui64 iIter = 0;
-						kq::core::ui64 iIndex;
-						while(iIter < nIter){
-
-							iIndex = ((randomKeys[iIter%nKeys])%nKeys) & mask;
-
-							if(bpt1.map(&randomKeys[iIndex], randomValues[iIndex])){
-								if(bpt1.lookup(&randomKeys[iIndex]) != randomValues[iIndex]){
-									printf("Error! Lookup Test Failed\n");
-								}
-							}
-							else{
-								printf("Error! Could not map\n");
-							}
-
-							iIter++;
-						}
-						{
-
-							kq::core::data::BPlusTree::Path p(&bpt1);
-
-							kq::core::ui64 nNextMoves =0;
-							{
-								if(p.init_first()){
-									nNextMoves++;
-									while(p.next()){									
-										nNextMoves++;
-									}
-								}
-							}
-
-							
-							kq::core::ui64 nPrevMoves =0;
-							{
-								if(p.init_last()){
-									nPrevMoves++;
-									while(p.prev()){
-										nPrevMoves++;
-									}
-								}
-							
-							}
-							
-
-							if(nPrevMoves != nNextMoves){
-								printf("First Iteration count mismatch\n");
-							}
-
-							if((nPrevMoves < mask/2 || nNextMoves < mask/2) && (nNextMoves < nIter/2 || nPrevMoves < nIter/2 )){
-								printf("First Warning Some thing is wrong\n");
-							}
-						}
-
-
-
-						ui64 nIter2 = 512;
-						iIter = 0;
-						while(iIter < nIter2){
-
-							iIndex = (mask & iIter)%nKeys;
-
-							bpt2.map(&iIndex, randomValues[iIndex]);
-
-							iIter++;
-						}
-
-						kq::core::data::BPlusTree::Path p(&bpt2);
-
-						iIter = 0;
-						while(iIter < nIter2){
-							iIndex = (mask & iIter)%nKeys;
-							void * pVal = 0;
-							if(!p.init_moveTo(&iIndex, &pVal) || pVal != randomValues[iIndex]){
-								printf("Error! MoveTo Test Failed\n");
-							}
-
-							iIter++;
-						}
-
-						kq::core::ui64 nNextMoves =0;
-						{
-							void * pVal;
-							if(p.init_first(&pVal, &iIndex) && (pVal == randomValues[iIndex%nKeys])){
-								nNextMoves++;
-								while(p.next(&pVal, &iIndex)){
-									if(pVal != randomValues[iIndex]){
-										printf("Error! Next Test Failed\n");
-									}
-
-									nNextMoves++;
-								}
-							
-							}
-						}
-
-						
-						kq::core::ui64 nPrevMoves =0;
-						{
-							void * pVal;
-							if(p.init_last(&pVal, &iIndex) && (pVal == randomValues[iIndex])){
-								nPrevMoves++;
-								while(p.prev(&pVal, &iIndex)){
-									if(pVal != randomValues[iIndex]){
-										printf("Error! Next Test Failed\n");
-									}
-
-									nPrevMoves++;
-								}
-							}
-						
-						}
-						
-
-						if(nPrevMoves != nNextMoves){
-							printf("Iteration count mismatch\n");
-						}
-
-						if((nPrevMoves < mask/2 || nNextMoves < mask/2) && (nNextMoves < nIter2/2 || nPrevMoves < nIter2/2)){
-							printf("Warning Some thing is wrong\n");
-						}
-						
-
-						//ui32 depth = nBytesInKey * 8/bits[iBitIndex];
-						//ui32 breadth = 1 << (ui64)bits[iBitIndex];
-
-
-						//gettimeofday(&t2, 0);
-						QueryPerformanceCounter(&t2);
-
-						double d1, d2, d;
-
-						//d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
-						//d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
-						d1 = t1.QuadPart;
-						d2 = t2.QuadPart;
-
-						double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
-						d = ((double)nIter)/((double)nMilliSecs);
-						results[iKeySizeIndex][iBitIndex] = d;
-						//printf("KeySZ %d/%d  t=%4.4f nIter=%lld depth %d, breadth %d\n", (int)keysizes[iKeySizeIndex], 8/(int)bits[iBitIndex], nMilliSecs, iIter, depth, breadth);
-						//fflush(stdout);
-
-						//bpt.dump();
-					}
-
-				}
-				//printf(".\n");
-
-			}
-
-
-			mem(randomKeys, 0);
-			mem(randomValues, 0);
-
-			printf("\n\n\n");
-			printf("Operations Per Millisecond Table\n\nLevels\t");
-			for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
-				printf("%4dx\t", 8/bits[iBitIndex]);
-			}
-			printf("\nKeyLen\n");
-			for(kq::core::ui8 iKeySizeIndex = 0; iKeySizeIndex < sizeof(keysizes); iKeySizeIndex++){
-				size_t nBytesInKey = keysizes[iKeySizeIndex];
-
-				printf("%.4d\t", (int)nBytesInKey);
-
-				for(kq::core::ui8 iBitIndex = 0; iBitIndex < sizeof(bits); iBitIndex++){
-					printf("%4.0f\t", results[iKeySizeIndex][iBitIndex]);
-				}
-
-				printf("\n");
-			}
-
-
-			printf("\n");
-			//bpt.dump();
-
-		}
-		
-		
 
 	}
 	return 0;
 }
+
+
+

@@ -1,8 +1,6 @@
 #include "core_memory_RefCounter.hpp"
 #include "core_IntegerTypes.hpp"
 
-#include "string.h"
-
 kq::core::memory::RefCounter kq::core::memory::RefCounter::nullCounter;
 
 
@@ -12,13 +10,14 @@ using namespace kq::core::memory;
 RefCounter::RefCounter(void * object, DestructionWorker destructionWorker, ui32 count):destructor(destructionWorker){
 
 	this->count = count;
+	this->countWeak = 0;
 	this->object = object;
 }
 
 void kq::core::memory::DestructionWorkerFunc_workerFree(void * worker, RefCounter * pCounter, void * pObject){
 	kq::core::memory::MemoryWorker & mem = *((kq::core::memory::MemoryWorker *)worker);
-	mem(pObject, 0);
-	mem(pCounter, 0);
+	if(pObject)mem(pObject, 0);
+	if(pCounter)mem(pCounter, 0);
 };
 
 void kq::core::memory::DestructionWorkerFunc_noOp(void *, RefCounter *, void *){}

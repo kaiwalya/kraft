@@ -2,7 +2,7 @@
 
 #define KQ_CORE_OOPS_H_
 
-#include "core_oops_OutOFMemoryException.hpp"
+#include "core_oops_OutOfMemoryException.hpp"
 
 
 #endif

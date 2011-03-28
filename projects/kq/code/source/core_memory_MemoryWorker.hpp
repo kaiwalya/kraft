@@ -30,8 +30,14 @@ namespace kq{
 						ArrayHeader * pHdr = (ArrayHeader *)pAlloc;
 						pHdr->nElements = nElements;
 						pHdr++;
-						new (pHdr) t[nElements];
-						return (t *)pHdr;
+
+						t * obj = (t*)pHdr;
+						ArrayIndex iElement = 0;
+						while(iElement < nElements){
+							new (obj + iElement) t();
+							iElement++;
+						}
+						return obj;
 					}
 					return 0;
 				};
