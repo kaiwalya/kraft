@@ -99,6 +99,7 @@ namespace kq{
 
 			};
 
+
 			class RefHolder{
 			private:
 			private:
@@ -369,6 +370,12 @@ namespace kq{
 					}					
 				};
 
+				/*
+				Pointer(const RefCounted & obj){
+					attach(obj.m_pRef, 0);
+				}
+				*/
+
 				Pointer(const RefHolder & pointer){
 					if(pointer.m_pRefCounter->getObject()){
 						attach(pointer.m_pRefCounter, pointer.m_iOffset);
@@ -559,6 +566,33 @@ namespace kq{
 										
 			};
 
+
+			class RefCounted{
+				//RefCounter * const m_pRef;
+				//template<typename A> friend class WeakPointer;
+				//template<typename A> friend class Pointer;
+
+			public:
+
+				WeakPointer<ui8> const This;
+				RefCounted(RefCounter * pRef):/*m_pRef(pRef),*/ This(pRef){
+				}
+
+				/*
+				template <typename t> t ref(){
+					return m_pRef;
+				}
+				*/
+
+				/*
+				operator RefCounter * (){
+					return m_pRef;
+				}
+
+				*/
+			};
+
+
 			template<typename classname>
 			void DestructionWorkerFunc_workerArrayDelete(void * worker, RefCounter * pCounter, void * pObject){
 				kq::core::memory::MemoryWorker & mem = *((kq::core::memory::MemoryWorker *)worker);
@@ -586,19 +620,6 @@ namespace kq{
 				if(pCounter) delete (pCounter);
 			};
 
-			class RefCounted{
-				RefCounter * const m_pRef;
-			public:
-
-				RefCounted(RefCounter * pRef):m_pRef(pRef){
-				}
-
-				template <typename t> t ref(){
-					return m_pRef;
-				}
-
-			};
-
 		};
 	};
 };
@@ -609,13 +630,13 @@ namespace kq{
 #define kq_core_memory_workerRefCountedClassNew(memworker, classname, ...)	(kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerNew(memworker, classname, (__VA_ARGS__)),	kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>,		&memworker))))
 #define kq_core_memory_workerRefCountedArrayNew(memworker, classname, n)	(kq_core_memory_workerNew(memworker, kq::core::memory::RefCounter, (kq_core_memory_workerArrayNew(memworker, classname, n),			kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerArrayDelete<classname>,	&memworker))))
 
-#define kq_core_memory_workerRefCountedObjectNew(pThis, mem, classname, ...) { \
-		classname * pObject = (classname *)mem(0, sizeof(classname)); \
-		kq::core::memory::RefCounter * pCounter = (kq::core::memory::RefCounter *)mem(0, sizeof(kq::core::memory::RefCounter));	\
-		new (pCounter) kq::core::memory::RefCounter(pObject, kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &mem)); \
-		new (pObject) classname (pCounter, __VA_ARGS__); \
-		pThis = kq::core::memory::Pointer<classname>(pCounter); \
+#define kq_core_memory_workerRefCountedObjectNew(pThis, memworker, classname, x) { \
+		classname * pObject = (classname *)memworker(0, sizeof(classname)); \
+		kq::core::memory::RefCounter * pCounter = (kq::core::memory::RefCounter *)memworker(0, sizeof(kq::core::memory::RefCounter));	\
+		new (pCounter) kq::core::memory::RefCounter(pObject, kq::core::memory::DestructionWorker(kq::core::memory::DestructionWorkerFunc_workerDelete<classname>, &memworker)); \
+		new (pObject) classname  x; \
+		pThis = kq::core::memory::Pointer<classname> (pCounter); \
 	}
-
+//, __VA_ARGS__
 #endif
 

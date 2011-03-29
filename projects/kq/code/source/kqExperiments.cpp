@@ -682,27 +682,33 @@ int main(int /*argc*/, char ** /*argv*/){
 
         //kq::core::data::BPlusTree_test(mem);
 
-        kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
-        pUI = kq::ui::UserInterface::createInstance(mem);
-        if(pUI){
 
-        	int iScreen, nScreens;
-        	nScreens = pUI->getScreenCount();
+		{
+			kq::core::memory::Pointer<Window> pWindow;
+			{
+				kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
+				pUI = kq::ui::UserInterface::createInstance(mem);
+				if(pUI){
+					if(pUI->getScreenCount()){
+						Pointer<Screen> pScreen = pUI->getScreen(0);
+						if(pScreen){
+							typedef FormatSpecification FS;
+							FS requests []  = {
+									{FS::rtPixelColorE, FS::pixclRGBA_8888},
+									{FS::rtOpenGLRenderable, true},
+									{FS::rtDoubleBufferingB, true},
+									{FS::rtEnd, 0}
+							};
+							pWindow = pScreen->createRootWindow(requests);
+						}
+					}
+				}
+			}
 
-        	for(iScreen = 0; iScreen < nScreens; iScreen++){
-        		Pointer<Screen> pScreen;
-        		pScreen = pUI->getScreen(iScreen);
-        		if(pScreen){
-        			printf("Got Screen %d\n", iScreen);
-        		}
-        		else{
-        			printf("Error getting Screen %d\n", iScreen);
-
-        		}
-           		pUI->getScreen(0);
-        	}
-        }
-
+			if(!pWindow){
+				printf("Could not get window\n");
+			}
+		}
 
 	}
 	return 0;

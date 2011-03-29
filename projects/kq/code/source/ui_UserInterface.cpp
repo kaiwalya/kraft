@@ -6,7 +6,7 @@ using namespace kq::ui;
 using namespace kq::core;
 using namespace kq::core::memory;
 
-
+/*
 class UserInterfaceProxy: public UserInterface{
 	MemoryWorker mem;
 	Pointer<UserInterface> m_pImpl;
@@ -74,12 +74,14 @@ public:
 
 };
 
+*/
 #include "ui_X_UserInterface.hpp"
 
 Pointer<UserInterface> UserInterface::createInstance(MemoryWorker &mem){
     Pointer<UserInterface> pRet;
     pRet = X::createInstance(mem);
 
+    /*
     if(pRet){
     	bool bValid = false;
     	Pointer<UserInterfaceProxy> pRet2 = kq_core_memory_workerRefCountedClassNew(mem, UserInterfaceProxy, mem);
@@ -89,6 +91,7 @@ Pointer<UserInterface> UserInterface::createInstance(MemoryWorker &mem){
     		}
     	}
     }
+    */
 
     return pRet;
 }
