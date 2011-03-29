@@ -53,6 +53,7 @@ namespace kq{
     	class Window{
     	public:
     		//vpod getFormatSpecificationValue();
+    		virtual bool changeVisibility(bool bTrue) = 0;
     	};
 
         //Starting point for any UI related stuff for a machine.
@@ -63,14 +64,15 @@ namespace kq{
         public:
             virtual kq::core::ui32 getScreenCount() = 0;
             virtual kq::core::memory::Pointer<Screen> getScreen(kq::core::ui32 iScreen) = 0;
-            virtual kq::core::memory::Pointer<OpenGLBridge> getOpenGLBridge() = 0;
+            //virtual kq::core::memory::Pointer<OpenGLBridge> getOpenGLBridge() = 0;
+            virtual void process() = 0;
         };
 
 
         class Screen{
         public:
         	virtual kq::core::memory::Pointer<Window> createRootWindow(const FormatSpecification * pRequests) = 0;
-        	virtual kq::core::memory::Pointer<UserInterface> getOwner() = 0;
+        	//virtual kq::core::memory::Pointer<UserInterface> getOwner() = 0;
         };
 
 

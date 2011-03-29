@@ -30,21 +30,24 @@ namespace kq{
         	class XWindow;
         	class GLX;
 
-            class UserInterface: public RefCounted, public ui::UserInterface{
+            class UserInterface: public ui::UserInterface{
             protected:
+
             	MemoryWorker & mem;
+            	WeakPointer<UserInterface> const This;
             public:
             	MemoryWorker & getMemoryWorker(){return mem;}
             protected:
                 Display * m_pDisplay;
             public:
                 Display * getDisplay();
+                Pointer<GLX> getGLX();
 
 
             public:
                 ui32 getScreenCount();
                 Pointer<ui::Screen> getScreen(ui32);
-                Pointer<ui::OpenGLBridge> getOpenGLBridge();
+                virtual void process();
 
 
 
@@ -58,9 +61,10 @@ namespace kq{
             };
 
 
-            class XScreen:public RefCounted, public ui::Screen{
+            class XScreen:public ui::Screen{
 
             private:
+            	WeakPointer<XScreen> This;
             	//MemoryWorker & mem;
             	Pointer<UserInterface> m_pUserInterface;
             	ui32 m_iIndex;
@@ -76,12 +80,32 @@ namespace kq{
 			public:
             	//virtual Pointer<ui::Window> createWindow(const ui::FormatSpecification * pRequests);
             	virtual kq::core::memory::Pointer<ui::Window> createRootWindow(const FormatSpecification * pRequests);
-            	virtual Pointer<ui::UserInterface> getOwner();
+            	virtual Pointer<UserInterface> getOwner();
 
             };
 
-            class XWindow: public RefCounted, public ui::Window{
+            class XWindow:public ui::Window{
 
+            	WeakPointer<XWindow> This;
+            public:
+            	class Configuration;
+            private:
+				::Window m_w;
+				Pointer<XScreen> m_pScreen;
+				Pointer<UserInterface> m_pUserInterface;
+				bool m_bOwned;
+				XWindow(RefCounter *);
+				bool up(Pointer<XScreen>, ::Window w, bool bOwned = false);
+				bool up(Pointer<XScreen> pScreen, Pointer<XWindow> pParent, Pointer<XWindow::Configuration> pConfig);
+				void down();
+				::Window getWindow(){return m_w;}
+			public:
+
+				~XWindow();
+
+			public:
+				static Pointer<XWindow> createRootWindow(Pointer<XScreen> pScreen, const ui::FormatSpecification * pRequests);
+				bool changeVisibility(bool bShow);
             public:
             	class Configuration:public XFreeable{
             	public:
@@ -94,6 +118,7 @@ namespace kq{
             	};
 
             	class Configurator{
+
 
             	public:
             		struct FBAEntry{
@@ -131,25 +156,11 @@ namespace kq{
 
             	};
 
-            private:
-            	::Window m_w;
-            	Pointer<XScreen> m_pScreen;
-            	bool m_bOwned;
-            	XWindow(RefCounter *);
-            	bool up(Pointer<XScreen>, ::Window w, bool bOwned = false);
-            	bool up(Pointer<XScreen> pScreen, Pointer<XWindow> pParent, Pointer<XWindow::Configuration> pConfig);
-            	void down();
-            	::Window getWindow(){return m_w;}
-            public:
-
-            	~XWindow();
-
-            public:
-            	static Pointer<XWindow> createRootWindow(Pointer<XScreen> pScreen, const ui::FormatSpecification * pRequests);
             };
 
-            class GLX:public RefCounted, public ui::OpenGLBridge{
-
+            class GLX:public ui::OpenGLBridge{
+            private:
+            	WeakPointer<GLX> This;
             public:
             	class Configuration{
             		Pointer<XWindow::Configuration> m_pXWindowConfig;
@@ -206,7 +217,7 @@ Pointer<ui::UserInterface> ui::X::createInstance(MemoryWorker &mem){
 using namespace kq::ui::X;
 
 UserInterface::UserInterface(RefCounter * pCounter, MemoryWorker & memworker):
-		RefCounted(pCounter),
+		This(pCounter),
 		mem(memworker)
 {
 
@@ -254,15 +265,24 @@ Pointer<ui::Screen> UserInterface::getScreen(ui32 iScreen){
     return 0;
 }
 
-Pointer<ui::OpenGLBridge> UserInterface::getOpenGLBridge(){
-	return GLX::createGLX(mem, This).castStatic<ui::OpenGLBridge>();
+Pointer<GLX> UserInterface::getGLX(){
+	return GLX::createGLX(mem, This);
 }
 
+void UserInterface::process(){
+
+	int nEvents = XPending(m_pDisplay);
+
+	XEvent event;
+	while(nEvents){
+		XNextEvent(m_pDisplay, &event);
+	}
+}
 
 Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::FormatSpecification * pRequests){
 	typedef FormatSpecification FS;
 
-	Pointer<ui::Window> pRet;
+	Pointer<XWindow> pRet;
 	bool bUseOpenGLBridge = false;
 
 	ui32 nR = 0;
@@ -285,14 +305,16 @@ Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::F
 		{
 			switch(r.requestValue){
 			case FS::pixclRGBA_8888:
-				ar[Configurator::fbaASize] = 1;
+				ar[Configurator::fbaASize] = 8;
 				printf("Alpha 8, ");
 			case FS::pixclRGB_888:
-				ar[Configurator::fbaRSize] = 1;
-				ar[Configurator::fbaGSize] = 1;
-				ar[Configurator::fbaBSize] = 1;
+				ar[Configurator::fbaRSize] = 8;
+				ar[Configurator::fbaGSize] = 8;
+				ar[Configurator::fbaBSize] = 8;
 				ar[Configurator::fbaRenderType] = GLX_RGBA_BIT;
+				ar[Configurator::fbaVisualType] = GLX_TRUE_COLOR;
 				printf("RGB 888, RType RGBA_BIT,");
+
 			}
 			break;
 		}
@@ -315,6 +337,9 @@ Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::F
 					printf("NoWindow, ");
 					out =  out & ~(GLX_WINDOW_BIT);
 
+				}
+				else{
+					out = out | GLX_WINDOW_BIT;
 				}
 				if(v & FS::rfMemory){
 					printf("Memory, ");
@@ -341,7 +366,7 @@ Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::F
 	Pointer<GLX::Configuration> pConfig;
 	if(bUseOpenGLBridge){
 
-		Pointer<GLX> pGLX = pScreen->getOwner()->getOpenGLBridge();
+		Pointer<GLX> pGLX = pScreen->getOwner()->getGLX();
 		if(pGLX){
 			//Check if GLX is supported
 			pConfig = pGLX->findConfiguration(pScreen, ar);
@@ -355,7 +380,7 @@ Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::F
 				Pointer<XWindow> pRoot;
 				MemoryWorker & mem = pUI->getMemoryWorker();
 				kq_core_memory_workerRefCountedObjectNew(pRoot, mem, XWindow, (pCounter));
-				if(pRoot && pRoot->up(pScreen, XDefaultRootWindow(pDisplay))){
+				if(pRoot && pRoot->up(pScreen, XRootWindow(pDisplay, pScreen->getScreenIndex()))){
 					Pointer<XWindow> pNew;
 					kq_core_memory_workerRefCountedObjectNew(pNew, mem, XWindow, (pCounter));
 					if(pNew && pNew->up(pScreen, pRoot, pXConfig)){
@@ -378,15 +403,17 @@ Pointer<XWindow> XWindow::createRootWindow(Pointer<XScreen> pScreen, const ui::F
 
 
 XWindow::XWindow(RefCounter * pCounter)
-	:RefCounted(pCounter)
+	:This(pCounter)
 {
 	printf("Window %p Created\n", this);
 }
 
 bool XWindow::up(Pointer<XScreen> pScreen, ::Window w, bool bOwned){
 	m_pScreen = pScreen;
+	m_pUserInterface = pScreen->getOwner();
 	m_w = w;
 	m_bOwned = bOwned;
+
 	return true;
 }
 
@@ -396,32 +423,78 @@ bool XWindow::up(Pointer<XScreen> pScreen, Pointer<XWindow> pParent, Pointer<Con
 	Display * pDisplay = pUserInterface->getDisplay();
 	XVisualInfo * pInfo = pConfig->m_pXVisualInfo;
 
-	XSetWindowAttributes swa;
+	XSetWindowAttributes swa = {0};
+	int swamask = 0;
 
-	swa.border_pixel = 0;
-	swa.event_mask = StructureNotifyMask;
+	swa.background_pixel = 0;	swamask |= CWBackPixel;
+	swa.border_pixel = 0;		swamask |= CWBorderPixel;
+	swa.event_mask =
+		StructureNotifyMask|
+		ExposureMask|
+		KeyPressMask|
+		KeyReleaseMask;			swamask |= CWEventMask;
 	swa.colormap = XCreateColormap(pDisplay, pParent->getWindow(), pInfo->visual, AllocNone);
-	int swamask = CWColormap | CWBorderPixel | CWEventMask;
+								swamask |= CWColormap;
+
 	::Window w = XCreateWindow(pDisplay, pParent->getWindow(), 0, 0, 100, 100, 0, pInfo->depth, InputOutput, pInfo->visual, swamask, &swa);
 
 	XFreeColormap(pDisplay, swa.colormap);
 
-	if(w){
-		return up(pScreen, w, true);
+	if(w && up(pScreen, w, true)){
+
+		XSetStandardProperties(pDisplay, m_w, "Test", "Test", None, 0, 0, 0);
+		Atom wmDelete = XInternAtom(pDisplay, "WM_DELETE_WINDOW", True);
+		XSetWMProtocols(pDisplay, m_w, &wmDelete, 1);
+		//XMapWindow(pDisplay, m_w);
+		/*
+		//Set the window to full screen
+		{
+			XEvent xev = {0};
+			Atom wm_state = XInternAtom(pDisplay, "_NET_WM_STATE", False);
+			Atom fullscreen = XInternAtom(pDisplay, "_NET_WM_STATE_FULLSCREEN", False);
+
+
+			xev.type = ClientMessage;
+			xev.xclient.window = m_w;
+			xev.xclient.message_type = wm_state;
+			xev.xclient.format = 32;
+			xev.xclient.data.l[0] = 1;
+			xev.xclient.data.l[1] = fullscreen;
+			xev.xclient.data.l[2] = 0;
+
+			XSendEvent(pDisplay, DefaultRootWindow(pDisplay), False, SubstructureNotifyMask, &xev);
+
+
+		}
+		*/
+		return true;
 	}
 
 	return false;
 }
 
-void XWindow::down(){
+bool XWindow::changeVisibility(bool bShow){
+	if(bShow){
+		XMapRaised(m_pUserInterface->getDisplay(), m_w);
+	}
+	else{
+		XUnmapWindow(m_pUserInterface->getDisplay(), m_w);
+	}
+	return true;
+}
 
+
+void XWindow::down(){
+	Pointer<UserInterface> pUI = m_pScreen->getOwner();
+	XUnmapWindow(pUI->getDisplay(), m_w);
+	XDestroyWindow(pUI->getDisplay(), m_w);
+	m_w = 0;
+	m_bOwned = false;
 }
 
 XWindow::~XWindow(){
 
 	down();
-
-	m_pScreen = 0;
 	printf("Window %p Destroyed\n", this);
 
 }
@@ -438,7 +511,7 @@ Pointer<GLX> GLX::createGLX(MemoryWorker &mem, Pointer<UserInterface> pUserInter
 }
 
 GLX::GLX(RefCounter * pRef)
-	:RefCounted(pRef)
+	:This(pRef)
 {
 
 }
@@ -519,7 +592,7 @@ Pointer<ui::Window> XScreen::createRootWindow(const ui::FormatSpecification * pR
 }
 
 XScreen::XScreen(RefCounter * pRef)
-	:RefCounted(pRef)
+	:This(pRef)
 {
 
 }
@@ -541,9 +614,8 @@ XScreen::~XScreen(){
 	down();
 }
 
-Pointer<ui::UserInterface> XScreen::getOwner(){
+Pointer<UserInterface> XScreen::getOwner(){
 	return m_pUserInterface;
-
 }
 
 /*

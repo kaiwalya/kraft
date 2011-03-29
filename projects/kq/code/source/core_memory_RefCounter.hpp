@@ -100,32 +100,37 @@ namespace kq{
 			};
 
 
+			template<typename t> class Pointer;
+			template<typename t> class WeakPointer;
+
+			template<typename type>
 			class RefHolder{
-			private:
 			private:
 				RefCounter * m_pRefCounter;
 				PtrOffset m_iOffset;
 
-				template<typename A> friend class WeakPointer;
-				template<typename A> friend class Pointer;
+				friend class WeakPointer<type>;
+				friend class Pointer<type>;
 			};
 
 			template<typename t>
-			class WeakPointer: public RefHolder{
+			class WeakPointer: public RefHolder<t>{
+
+
 			public:
 
 				void setReference(RefCounter * pRefCounter, PtrOffset offset){
-					m_pRefCounter = pRefCounter;
-					m_iOffset = offset;
+					RefHolder<t>::m_pRefCounter = pRefCounter;
+					RefHolder<t>::m_iOffset = offset;
 				};
 
 				void attach(RefCounter * pRefCounter, PtrOffset offset = 0){
 					setReference(pRefCounter, offset);
-					m_pRefCounter->incrementWeak();
+					RefHolder<t>::m_pRefCounter->incrementWeak();
 				};
 
 				void detach(){
-					m_pRefCounter->decrementWeak();
+					RefHolder<t>::m_pRefCounter->decrementWeak();
 					setReference(&kq::core::memory::RefCounter::nullCounter, 0);
 				}
 
@@ -138,7 +143,7 @@ namespace kq{
 				};
 
 				ui8 * location(){
-					((char *)m_pRefCounter->getObject()) + m_iOffset;
+					((char *)RefHolder<t>::m_pRefCounter->getObject()) + RefHolder<t>::m_iOffset;
 				}
 			public:
 
@@ -150,13 +155,13 @@ namespace kq{
 					}
 				};
 
-				WeakPointer(const RefHolder & pointer){
-					attach(pointer.m_pRefCounter, pointer.m_iOffset);
+				WeakPointer(const RefHolder<t> & pointer){
+					attach(pointer.RefHolder<t>::m_pRefCounter, pointer.RefHolder<t>::m_iOffset);
 				};
 
 
 				WeakPointer(const WeakPointer<t> & pointer){
-					attach(pointer.m_pRefCounter, pointer.m_iOffset);
+					attach(pointer.RefHolder<t>::m_pRefCounter, pointer.RefHolder<t>::m_iOffset);
 				};
 
 				WeakPointer(){
@@ -168,44 +173,44 @@ namespace kq{
 				}
 
 				//We do not want to use a reference here, else "p = p->next" will fail when refcount of p == 1;
-				WeakPointer<t> & operator = (const RefHolder oprand){
-					if(m_pRefCounter != oprand.m_pRefCounter){
+				WeakPointer<t> & operator = (const RefHolder<t> oprand){
+					if(RefHolder<t>::m_pRefCounter != oprand.RefHolder<t>::m_pRefCounter){
 						detach();
-						attach(oprand.m_pRefCounter, oprand.m_iOffset);
+						attach(oprand.RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
-					else if(m_iOffset != oprand.m_iOffset)
+					else if(RefHolder<t>::m_iOffset != oprand.RefHolder<t>::m_iOffset)
 					{
-						setReference(m_pRefCounter, oprand.m_iOffset);
+						setReference(RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
 					return *this;
 				};
 
 				//We do not want to use a reference here, else "p = p->next" will fail when refcount of p == 1;
 				WeakPointer<t> & operator = (const WeakPointer<t> oprand){
-					if(m_pRefCounter != oprand.m_pRefCounter){
+					if(RefHolder<t>::m_pRefCounter != oprand.RefHolder<t>::m_pRefCounter){
 						detach();
-						attach(oprand.m_pRefCounter, oprand.m_iOffset);
+						attach(oprand.RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
-					else if(m_iOffset != oprand.m_iOffset)
+					else if(RefHolder<t>::m_iOffset != oprand.RefHolder<t>::m_iOffset)
 					{
-						setReference(m_pRefCounter, oprand.m_iOffset);
+						setReference(RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
 					return *this;
 				};
 
 				operator WeakPointer<const t>()const{
 
-					WeakPointer<const t> ret(m_pRefCounter, m_iOffset);
+					WeakPointer<const t> ret(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 					return ret;
 				}
 
 				bool operator == (const WeakPointer<t> & oprand) const{
-					return (oprand.m_pRefCounter == m_pRefCounter && oprand.m_iOffset == m_iOffset);
+					return (oprand.RefHolder<t>::m_pRefCounter == RefHolder<t>::m_pRefCounter && oprand.RefHolder<t>::m_iOffset == RefHolder<t>::m_iOffset);
 
 				}
 
 				bool operator != (const WeakPointer<t> & oprand) const{
-					return (oprand.m_pRefCounter != m_pRefCounter || oprand.m_iOffset != m_iOffset);
+					return (oprand.RefHolder<t>::m_pRefCounter != RefHolder<t>::m_pRefCounter || oprand.RefHolder<t>::m_iOffset != RefHolder<t>::m_iOffset);
 				}
 
 				t * operator ->()const {
@@ -223,36 +228,36 @@ namespace kq{
 				}
 
 				WeakPointer<t> operator +(ArrayIndex index){
-					return WeakPointer(m_pRefCounter, m_iOffset + (index * sizeof(t)));
+					return WeakPointer(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset + (index * sizeof(t)));
 				}
 
 				WeakPointer<t> operator -(ArrayIndex index){
-					return WeakPointer(m_pRefCounter, m_iOffset - (index * sizeof(t)));
+					return WeakPointer(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset - (index * sizeof(t)));
 				}
 
 				WeakPointer<t> & operator ++(){
-					m_iOffset += sizeof(t);
+					RefHolder<t>::m_iOffset += sizeof(t);
 					return *this;
 				}
 
 				//There needs to be an int here for this to be a postfix operator overload
 				WeakPointer<t> & operator ++(int i){
 					i++;
-					m_iOffset += sizeof(t);
+					RefHolder<t>::m_iOffset += sizeof(t);
 					return *this;
 				}
 
 				WeakPointer<t> & operator --(){
-					m_iOffset -= sizeof(t);
+					RefHolder<t>::m_iOffset -= sizeof(t);
 				}
 
 				WeakPointer<t> & operator += (ArrayIndex index){
-					m_iOffset += (index * sizeof(t));
+					RefHolder<t>::m_iOffset += (index * sizeof(t));
 					return *this;
 				}
 
 				WeakPointer<t> & operator -= (ArrayIndex index){
-					m_iOffset -= (index * sizeof(t));
+					RefHolder<t>::m_iOffset -= (index * sizeof(t));
 					return *this;
 				}
 
@@ -280,7 +285,7 @@ namespace kq{
 
 				//This check should fail if the object was deallocated
 				operator bool (){
-					return (m_pRefCounter->getObject()) != 0;
+					return (RefHolder<t>::m_pRefCounter->getObject()) != 0;
 				}
 
 
@@ -290,7 +295,7 @@ namespace kq{
 					t2 * pt2;
 					pt2 = pt1;
 
-					return WeakPointer<t2 *>(m_pRefCounter, m_iOffset);
+					return WeakPointer<t2 *>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 
 				template<typename t2>
@@ -300,7 +305,7 @@ namespace kq{
 					t2 * pt2;
 					pt2 = static_cast<t2 *>(pt1);
 
-					return WeakPointer<t2>(m_pRefCounter, m_iOffset);
+					return WeakPointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 
 
@@ -310,7 +315,7 @@ namespace kq{
 					t * pt1 = (t*)location();
 					t2 * pt2 = dynamic_cast<t2 *>(pt1);
 					if(pt2){
-						return WeakPointer<t2>(m_pRefCounter, m_iOffset);
+						return WeakPointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 					}
 					else{
 						return WeakPointer<t2>();
@@ -326,29 +331,29 @@ namespace kq{
 					t2 * pt2;
 					pt2 = reinterpret_cast<t2 *>(pt1);
 
-					return WeakPointer<t2>(m_pRefCounter, m_iOffset);
+					return WeakPointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 
 			};
 
 			template<typename t>
-			class Pointer: public RefHolder{
+			class Pointer: public RefHolder<t>{
 			public:
 				t* m_pBufferedObject;
 
 				void setReference(RefCounter * pRefCounter, PtrOffset offset){
-					m_pRefCounter = pRefCounter;
+					RefHolder<t>::m_pRefCounter = pRefCounter;
 					m_pBufferedObject = reinterpret_cast<t *>((PtrGranular)pRefCounter->getObject() + offset);
-					m_iOffset = offset;
+					RefHolder<t>::m_iOffset = offset;
 				};
 
 				void attach(RefCounter * pRefCounter, PtrOffset offset = 0){
 					setReference(pRefCounter, offset);
-					m_pRefCounter->increment();  
+					RefHolder<t>::m_pRefCounter->increment();
 				};
 			   
 				void detach(){
-					m_pRefCounter->decrement();
+					RefHolder<t>::m_pRefCounter->decrement();
 					setReference(&kq::core::memory::RefCounter::nullCounter, 0);
 				}
 
@@ -376,9 +381,9 @@ namespace kq{
 				}
 				*/
 
-				Pointer(const RefHolder & pointer){
-					if(pointer.m_pRefCounter->getObject()){
-						attach(pointer.m_pRefCounter, pointer.m_iOffset);
+				Pointer(const RefHolder<t> & pointer){
+					if(pointer.RefHolder<t>::m_pRefCounter->getObject()){
+						attach(pointer.RefHolder<t>::m_pRefCounter, pointer.RefHolder<t>::m_iOffset);
 					}
 					else{
 						attach(&kq::core::memory::RefCounter::nullCounter);
@@ -386,7 +391,7 @@ namespace kq{
 				};
 
 				Pointer(const Pointer<t> & pointer){
-					attach(pointer.m_pRefCounter, pointer.m_iOffset);
+					attach(pointer.RefHolder<t>::m_pRefCounter, pointer.RefHolder<t>::m_iOffset);
 				};
 
 				Pointer(){
@@ -399,27 +404,27 @@ namespace kq{
 
 				//We do not want to use a reference here, else "p = p->next" will fail when refcount of p == 1;
 				Pointer<t> & operator = (const Pointer<t> oprand){
-					if(m_pRefCounter != oprand.m_pRefCounter){
+					if(RefHolder<t>::m_pRefCounter != oprand.RefHolder<t>::m_pRefCounter){
 						detach();
-						attach(oprand.m_pRefCounter, oprand.m_iOffset);
+						attach(oprand.RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
-					else if(m_iOffset != oprand.m_iOffset)
+					else if(RefHolder<t>::m_iOffset != oprand.RefHolder<t>::m_iOffset)
 					{
-						setReference(m_pRefCounter, oprand.m_iOffset);
+						setReference(RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
 					return *this;
 				};
 
 
 				//We do not want to use a reference here, else "p = p->next" will fail when refcount of p == 1;
-				Pointer<t> & operator = (const RefHolder oprand){
-					if(m_pRefCounter != oprand.m_pRefCounter){
+				Pointer<t> & operator = (const RefHolder<t> oprand){
+					if(RefHolder<t>::m_pRefCounter != oprand.RefHolder<t>::m_pRefCounter){
 						detach();
-						attach(oprand.m_pRefCounter, oprand.m_iOffset);
+						attach(oprand.RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
-					else if(m_iOffset != oprand.m_iOffset)
+					else if(RefHolder<t>::m_iOffset != oprand.RefHolder<t>::m_iOffset)
 					{
-						setReference(m_pRefCounter, oprand.m_iOffset);
+						setReference(RefHolder<t>::m_pRefCounter, oprand.RefHolder<t>::m_iOffset);
 					}
 					return *this;
 				};
@@ -427,7 +432,7 @@ namespace kq{
 
 				operator Pointer<const t>()const{
 
-					Pointer<const t> ret(m_pRefCounter, m_iOffset);
+					Pointer<const t> ret(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 					return ret;
 				}
 
@@ -454,16 +459,16 @@ namespace kq{
 				}
 				
 				Pointer<t> operator +(ArrayIndex index){
-					return Pointer(m_pRefCounter, m_iOffset + (index * sizeof(t)));
+					return Pointer(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset + (index * sizeof(t)));
 				}
 
 				Pointer<t> operator -(ArrayIndex index){
-					return Pointer(m_pRefCounter, m_iOffset - (index * sizeof(t)));
+					return Pointer(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset - (index * sizeof(t)));
 				}
 
 				Pointer<t> & operator ++(){
 					m_pBufferedObject++;
-					m_iOffset += sizeof(t);
+					RefHolder<t>::m_iOffset += sizeof(t);
 					return *this;
 				}
 
@@ -472,24 +477,24 @@ namespace kq{
 
 					i++;
 					m_pBufferedObject++;
-					m_iOffset += sizeof(t);
+					RefHolder<t>::m_iOffset += sizeof(t);
 					return *this;
 				}
 
 				Pointer<t> & operator --(){
 					m_pBufferedObject--;
-					m_iOffset -= sizeof(t);
+					RefHolder<t>::m_iOffset -= sizeof(t);
 				}
 
 				Pointer<t> & operator += (ArrayIndex index){
 					m_pBufferedObject += index;
-					m_iOffset += (index * sizeof(t));
+					RefHolder<t>::m_iOffset += (index * sizeof(t));
 					return *this;
 				}
 				
 				Pointer<t> & operator -= (ArrayIndex index){
 					m_pBufferedObject -= index;
-					m_iOffset -= (index * sizeof(t));
+					RefHolder<t>::m_iOffset -= (index * sizeof(t));
 					return *this;
 				}
 
@@ -525,7 +530,7 @@ namespace kq{
 					t2 * pt2;
 					pt2 = pt1;
 
-					return Pointer<t2 *>(m_pRefCounter, m_iOffset);
+					return Pointer<t2 *>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 
 				template<typename t2>
@@ -535,7 +540,7 @@ namespace kq{
 					t2 * pt2;
 					pt2 = static_cast<t2 *>(pt1);
 
-					return Pointer<t2>(m_pRefCounter, m_iOffset);
+					return Pointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 
 				
@@ -545,7 +550,7 @@ namespace kq{
 					t * pt1 = m_pBufferedObject;
 					t2 * pt2 = dynamic_cast<t2 *>(pt1);
 					if(pt2){
-						return Pointer<t2>(m_pRefCounter, m_iOffset);
+						return Pointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 					}
 					else{
 						return Pointer<t2>();
@@ -561,35 +566,9 @@ namespace kq{
 					t2 * pt2;
 					pt2 = reinterpret_cast<t2 *>(pt1);
 
-					return Pointer<t2>(m_pRefCounter, m_iOffset);
+					return Pointer<t2>(RefHolder<t>::m_pRefCounter, RefHolder<t>::m_iOffset);
 				}
 										
-			};
-
-
-			class RefCounted{
-				//RefCounter * const m_pRef;
-				//template<typename A> friend class WeakPointer;
-				//template<typename A> friend class Pointer;
-
-			public:
-
-				WeakPointer<ui8> const This;
-				RefCounted(RefCounter * pRef):/*m_pRef(pRef),*/ This(pRef){
-				}
-
-				/*
-				template <typename t> t ref(){
-					return m_pRef;
-				}
-				*/
-
-				/*
-				operator RefCounter * (){
-					return m_pRef;
-				}
-
-				*/
 			};
 
 

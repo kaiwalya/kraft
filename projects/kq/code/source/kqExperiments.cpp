@@ -666,6 +666,23 @@ public:
 #include "ui.hpp"
 using namespace kq::ui;
 
+#include "unistd.h"
+
+class A{
+
+};
+class B: public A{
+
+};
+
+class C:public A{
+
+};
+
+class D:public B, public C{
+
+};
+
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
 
@@ -685,8 +702,8 @@ int main(int /*argc*/, char ** /*argv*/){
 
 		{
 			kq::core::memory::Pointer<Window> pWindow;
+			kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
 			{
-				kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
 				pUI = kq::ui::UserInterface::createInstance(mem);
 				if(pUI){
 					if(pUI->getScreenCount()){
@@ -697,6 +714,7 @@ int main(int /*argc*/, char ** /*argv*/){
 									{FS::rtPixelColorE, FS::pixclRGBA_8888},
 									{FS::rtOpenGLRenderable, true},
 									{FS::rtDoubleBufferingB, true},
+									{FS::rtNativeRenderable, true},
 									{FS::rtEnd, 0}
 							};
 							pWindow = pScreen->createRootWindow(requests);
@@ -705,12 +723,17 @@ int main(int /*argc*/, char ** /*argv*/){
 				}
 			}
 
-			if(!pWindow){
-				printf("Could not get window\n");
+			if(pWindow && pUI){
+				pWindow->changeVisibility(true);
+				for(;;){
+					pUI->process();
+				}
 			}
 		}
 
 	}
+
+
 	return 0;
 }
 

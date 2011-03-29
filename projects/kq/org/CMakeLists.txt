@@ -7,15 +7,17 @@ add_definitions(-DUNICODE -D_UNICODE)
 
 
 #Warning level
+SET(CMAKE_CXX_WARNING_LEVEL 4)
 IF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
    # Use the highest warning level for visual studio.
-   SET(CMAKE_CXX_WARNING_LEVEL 4)
    IF(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
      STRING(REGEX REPLACE "/W[0-4]" "/W4"
             CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
    ELSE(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
    ENDIF(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+ELSE (CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 ENDIF(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
 
 #Code Generation
