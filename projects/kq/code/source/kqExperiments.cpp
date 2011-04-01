@@ -3,7 +3,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "memory.h"
-
+/*
 static int iDepth = 0;
 
 class LogInOut{
@@ -52,7 +52,8 @@ public:
 
 #define LOGINOUT LogInOut var##__FUNCTION__(__FUNCTION__);
 #define LOGDEPTH var##__FUNCTION__.pushdepth()
-
+*/
+/*
 namespace kq{
 
 	namespace flows{
@@ -309,6 +310,7 @@ public:
 	Test(){printf("%p", this);LOGINOUT;}
 	~Test(){printf("%p", this);LOGINOUT;}
 };
+*/
 
 /*
 
@@ -671,17 +673,22 @@ using namespace kq::ui;
 class A{
 
 };
-class B: public A{
+class B: /*virtual*/ public A{
 
 };
 
-class C:public A{
+class C:/*virtual*/ public A{
 
 };
 
 class D:public B, public C{
 
 };
+
+using namespace kq;
+using namespace kq::core;
+using namespace kq::core::memory;
+
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -699,6 +706,7 @@ int main(int /*argc*/, char ** /*argv*/){
 
         //kq::core::data::BPlusTree_test(mem);
 
+		/*
 
 		{
 			kq::core::memory::Pointer<Window> pWindow;
@@ -730,10 +738,17 @@ int main(int /*argc*/, char ** /*argv*/){
 				}
 			}
 		}
+		*/
+
 
 	}
 
 
+	Pointer<B> p1;
+	static_cast< Pointer<A> >(p1);
+
+
+	printf("\n\n\nDone\n");
 	return 0;
 }
 

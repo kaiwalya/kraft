@@ -3,7 +3,6 @@
 
 kq::core::memory::RefCounter kq::core::memory::RefCounter::nullCounter;
 
-
 using namespace kq::core;
 using namespace kq::core::memory;
 

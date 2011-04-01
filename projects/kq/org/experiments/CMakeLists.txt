@@ -1,6 +1,6 @@
-file(GLOB_RECURSE project_experiments_source RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${kq_source}ui*.[c,h]??" "${kq_source}/ui*.[c,h]")
+#file(GLOB_RECURSE project_experiments_source RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${kq_source}ui*.[c,h]??" "${kq_source}/ui*.[c,h]")
 
-source_group(ui FILES ${project_experiments_source})
+#source_group(ui FILES ${project_experiments_source})
 
 set( project_experiments_source
     ${project_experiments_source}
