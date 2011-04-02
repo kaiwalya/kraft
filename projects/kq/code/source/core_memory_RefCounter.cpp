@@ -10,7 +10,7 @@ RefCounter::RefCounter(void * object, DestructionWorker destructionWorker, ui32 
 
 	this->count = count;
 	this->countWeak = 0;
-	this->object = object;
+	this->object = (ui8 *)object;
 }
 
 void kq::core::memory::DestructionWorkerFunc_workerFree(void * worker, RefCounter * pCounter, void * pObject){

@@ -12,5 +12,10 @@ set( project_experiments_source
 
 add_executable(${prjExperiments} ${project_experiments_source})
 add_dependencies(${prjExperiments} ${prjCore})
-target_link_libraries(${prjExperiments} ${prjCore} X11 GL)
+
+target_link_libraries(${prjExperiments}
+	${prjCore}
+#	X11
+#	GL
+)
 

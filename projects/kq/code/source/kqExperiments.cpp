@@ -744,8 +744,20 @@ int main(int /*argc*/, char ** /*argv*/){
 	}
 
 
-	Pointer<B> p1;
-	static_cast< Pointer<A> >(p1);
+
+	//WeakPointer<B> p1;
+	//WeakPointer<A> p2(p1);
+
+	RefHolder<B, &RefCounter::incrementWeak, &RefCounter::decrementWeak> p1;
+	RefHolder<A, &RefCounter::increment, &RefCounter::decrement> p2;
+	printf("\n\n\n\n\n\n\n");
+
+
+	p2 = p1;
+
+
+
+	//WeakPointer<A> p3(p1);
 
 
 	printf("\n\n\nDone\n");
