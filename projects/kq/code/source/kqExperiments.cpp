@@ -672,9 +672,11 @@ using namespace kq::ui;
 
 class A{
 
+	int i;
 };
 class B: /*virtual*/ public A{
 
+	int j;
 };
 
 class C:/*virtual*/ public A{
@@ -688,7 +690,6 @@ class D:public B, public C{
 using namespace kq;
 using namespace kq::core;
 using namespace kq::core::memory;
-
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -748,19 +749,19 @@ int main(int /*argc*/, char ** /*argv*/){
 	//WeakPointer<B> p1;
 	//WeakPointer<A> p2(p1);
 
+
 	RefHolder<B, &RefCounter::incrementWeak, &RefCounter::decrementWeak> p1;
-	RefHolder<A, &RefCounter::increment, &RefCounter::decrement> p2;
-	printf("\n\n\n\n\n\n\n");
+	RefHolder<A, &RefCounter::increment, &RefCounter::decrement> p2(p1);
 
 
+	B* pp1;
+	A * pp2;
+	pp2 = pp1;
 	p2 = p1;
-
-
 
 	//WeakPointer<A> p3(p1);
 
 
-	printf("\n\n\nDone\n");
 	return 0;
 }
 

@@ -52,8 +52,10 @@ public:
 };
 //__PRETTY_FUNCTION__
 //__FUNCTION__
-#define LOGINOUT LogInOut var##__FUNCTION__((const void *)this, __FUNCTION__);
-#define LOGDEPTH var##__FUNCTION__.pushdepth()
+//#define LOGINOUT LogInOut var##__FUNCTION__((const void *)this, __FUNCTION__);
+//#define LOGDEPTH var##__FUNCTION__.pushdepth()
+#define LOGINOUT ((void)0)
+#define LOGDEPTH LOGINOUT
 
 
 #include "core_memory_MemoryWorker.hpp"
@@ -161,81 +163,73 @@ namespace kq{
 
 			};
 
+			template<typename type, void (RefCounter::*up)(), void (RefCounter::*down)()>
+			class RefHolder{
+				template<typename type2, void (RefCounter::*up2)(), void (RefCounter::*down2)()> friend class RefHolder;
 
-			template<typename t> class Pointer;
-			template<typename t> class WeakPointer;
-
-
-			struct Reference{
+				#define kq_declare_template template <typename type0, void (RefCounter::*up0)(), void (RefCounter::*down0)()>
+				#define kq_declare_function_taking_constreference(name) kq_declare_template name (const RefHolder<type0, up0, down0> & o)
+				#define kq_overload_bool_operator(op) kq_declare_function_taking_constreference(bool operator op) const{return ((p()) op (o.p()));}
 			protected:
-				void * p;
+				type * t;
 				RefCounter * c;
 				PtrOffset i;
 
-				Reference():c(&RefCounter::nullCounter), i(0), p(0){}
-
-				Reference(const Reference & other):c(other.c), i(other.i), p(other.p){}
-
-				const Reference & operator = (const Reference & other){
-					c = other.c;
-					i = other.i;
-					p = other.p;
-					return *this;
+				void switchCounter(RefCounter * oc, PtrOffset oi){
+					(oc->*up)();
+					(c->*down)();
+					c = oc;
+					i = oi;
 				}
 
-				void operator()(ui32 i = 0){
-					p = c->getObjectLocation() + i;
+				type * p() const{
+					type * p0;
+					if(c != &RefCounter::nullCounter){
+						p0 = c->getObjectLocation();
+						if(!p0){
+							switchCounter(&RefCounter::nullCounter, i);
+						}
+					}
+					else{
+						p0 = 0;
+					}
+					return (p0 + i);
 				}
 
-				bool operator == (const Reference & other){
-					return (p == other.p);
-				}
+			public:
+				RefHolder():c(&RefCounter::nullCounter), i(0), t(0){(c->*up)();}
+				~RefHolder(){(c->*down)();}
+				kq_declare_template RefHolder(const RefHolder<type0, up0, down0> & o):c(o.c), i(o.i), t(o.t){(c->*up)();}
+				kq_declare_function_taking_constreference(const RefHolder & operator =){switchCounter(o.c, o.i); t = o.t;}
+				kq_declare_function_taking_constreference(ui32 operator -){return ((char *)p() - (char *)p());}
+				kq_overload_bool_operator(==);
+				kq_overload_bool_operator(!=);
+				kq_overload_bool_operator(<);
+				kq_overload_bool_operator(<=);
+				kq_overload_bool_operator(>=);
+				kq_overload_bool_operator(>);
+				RefHolder & operator +=(ui32 iN){i += iN;}
+				RefHolder & operator -=(ui32 iN){i -= iN;}
+				RefHolder & operator ++(){i++;}
+				RefHolder & operator --(){i--;}
+				void operator ++(int){i++;}
+				void operator --(int){i--;}
+				type & operator [](ui32 iOffset){return *(p() + iOffset);}
+				type * operator -> (){return p();}
+				type & operator * (){return *(p());}
+				#undef kq_overload_bool_operator
+				#undef kq_declare_function_taking_constreference
+				#undef kq_declare_template
+
 			};
 
 
-			template<void (RefCounter::*up)(), void (RefCounter::*down)()>
-			class RefHolderBase: public Reference{
-				void swap(const Reference & other){LOGINOUT;}
-			public:
-				RefHolderBase(){LOGINOUT;}
-				template<void (RefCounter::*up0)(), void (RefCounter::*down0)()>
-				RefHolderBase(const RefHolderBase<up0, down0> & other):Reference(other){LOGINOUT;}
-				virtual ~RefHolderBase(){LOGINOUT;}
-			};
-
-			template<typename type>
-			class Type{
-			public:
-				Type(){LOGINOUT;}
-
-				template<typename type0> Type(const Type<type0> other){
-					LOGINOUT;
-					type * newp = (type0 *)0;
-				}
-
-			};
-
-			template<typename type, void (RefCounter::*up)(), void (RefCounter::*down)()>
-			class RefHolder{
-			public:
-				RefHolderBase<up, down> m_ref;
-				Type<type> m_type;
-
-			public:
-				RefHolder(){LOGINOUT;}
-
-				template <typename type2, void (RefCounter::*up2)(), void (RefCounter::*down2)()>
-				RefHolder(const RefHolder<type2, up2, down2> other):m_type(other.m_type), m_ref(other.m_ref){LOGINOUT;}
-			};
-
-			/*
 			template<typename type>
 			class WeakPointer: public RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>{
 			public:
-				WeakPointer(){LOGINOUT}
+				WeakPointer(){}
 				WeakPointer(const WeakPointer<type> &other):RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>(other){LOGINOUT;}
 
-				template <type>
 			};
 
 			template<typename type>
@@ -244,7 +238,7 @@ namespace kq{
 				Pointer(){LOGINOUT;}
 				Pointer(const Pointer<type> &other):RefHolder<type, &RefCounter::increment, &RefCounter::decrement>(other){LOGINOUT;}
 			};
-			*/
+
 
 			template<typename classname>
 			void DestructionWorkerFunc_workerArrayDelete(void * worker, RefCounter * pCounter, void * pObject){
