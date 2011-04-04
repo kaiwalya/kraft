@@ -205,10 +205,9 @@ namespace kq{
 
 Pointer<ui::UserInterface> ui::X::createInstance(MemoryWorker &mem){
     Pointer<UserInterface> pRet;
-
     kq_core_memory_workerRefCountedObjectNew(pRet, mem, UserInterface, (pCounter, mem) );
-    if(pRet->up()){
-    	return pRet.castStatic<ui::UserInterface>();
+    if(pRet && pRet->up()){
+    	return pRet;
     }
     return 0;
 }
@@ -234,6 +233,7 @@ bool UserInterface::up(){
 		printf("X [Display %p] Initialized\n", m_pDisplay);
 		bRet = true;
 	}
+	return bRet;
 }
 
 void UserInterface::down(){
@@ -259,7 +259,7 @@ Pointer<ui::Screen> UserInterface::getScreen(ui32 iScreen){
     kq_core_memory_workerRefCountedObjectNew(p, mem, XScreen, (pCounter) );
     if(p){
     	if(p->up(This, iScreen)){
-    		return p.castStatic<ui::Screen>();
+    		return p;
     	}
     }
     return 0;
@@ -588,7 +588,7 @@ GLX::~GLX(){
 }
 
 Pointer<ui::Window> XScreen::createRootWindow(const ui::FormatSpecification * pRequests){
-	return XWindow::createRootWindow(This, pRequests).castStatic<ui::Window>();
+	return XWindow::createRootWindow(This, pRequests);
 }
 
 XScreen::XScreen(RefCounter * pRef)

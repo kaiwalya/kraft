@@ -607,7 +607,7 @@ void BPlusTree::dump(){
 #include "sys/time.h"
 
 
-bool BPlusTree_test(kq::core::memory::MemoryWorker &mem){
+bool kq::core::data::BPlusTree_test(kq::core::memory::MemoryWorker &mem){
 
 		{
 

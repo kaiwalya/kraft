@@ -707,17 +707,18 @@ int main(int /*argc*/, char ** /*argv*/){
 
         //kq::core::data::BPlusTree_test(mem);
 
-		/*
-
 		{
 			kq::core::memory::Pointer<Window> pWindow;
 			kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
 			{
 				pUI = kq::ui::UserInterface::createInstance(mem);
+
 				if(pUI){
+
 					if(pUI->getScreenCount()){
 						Pointer<Screen> pScreen = pUI->getScreen(0);
 						if(pScreen){
+
 							typedef FormatSpecification FS;
 							FS requests []  = {
 									{FS::rtPixelColorE, FS::pixclRGBA_8888},
@@ -730,6 +731,8 @@ int main(int /*argc*/, char ** /*argv*/){
 						}
 					}
 				}
+
+
 			}
 
 			if(pWindow && pUI){
@@ -739,27 +742,9 @@ int main(int /*argc*/, char ** /*argv*/){
 				}
 			}
 		}
-		*/
 
 
 	}
-
-
-
-	//WeakPointer<B> p1;
-	//WeakPointer<A> p2(p1);
-
-
-	RefHolder<B, &RefCounter::incrementWeak, &RefCounter::decrementWeak> p1;
-	RefHolder<A, &RefCounter::increment, &RefCounter::decrement> p2(p1);
-
-
-	B* pp1;
-	A * pp2;
-	pp2 = pp1;
-	p2 = p1;
-
-	//WeakPointer<A> p3(p1);
 
 
 	return 0;

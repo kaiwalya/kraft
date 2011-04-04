@@ -182,7 +182,7 @@ void * PooledMemoryAllocator::allocator(void * p, ui64 n){
 				*ppBlock = pBlock;
 				ui8 index = (ui8)(ppBlock - arrPoolArray);
 				arrPoolCount[index]++;					
-				memset(p, 0xFF, (size_t)arrSize[index] - sizeof(*pBlock));
+				memset(p, 0xF0, (size_t)arrSize[index] - sizeof(*pBlock));
 				if(arrPoolCount[index] > iBalanceThreshold){
 					balancePool(index, iBalanceToThreshold);
 				}

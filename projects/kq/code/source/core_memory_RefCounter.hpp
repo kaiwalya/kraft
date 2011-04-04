@@ -111,13 +111,14 @@ namespace kq{
 				void increment(){
 					LOGINOUT;
 					++count;
-					LOGDEPTH;printf("w %d, s %d\n", count, countWeak);
+					//if(this != &nullCounter)printf("[%8p]++ > %d\n", this, count);
+					//LOGDEPTH;printf("[%p]w %d, s %d\n", this, count, countWeak);
 				};
 
 				void incrementWeak(){
 					LOGINOUT;
 					++countWeak;
-					LOGDEPTH;printf("w %d, s %d\n", count, countWeak);
+					//LOGDEPTH;printf("[%p]w %d, s %d\n", this, count, countWeak);
 				}
 
 				ui8 * getObjectLocation(){
@@ -130,7 +131,8 @@ namespace kq{
 				void decrement(){
 					LOGINOUT;
 					--count;
-					LOGDEPTH;printf("w %d, s %d\n", count, countWeak);
+					//LOGDEPTH;printf("[%p]w %d, s %d\n", this, count, countWeak);
+					//if(this != &nullCounter)printf("[%8p]-- > %d\n", this, count);
 					if(count == 0){
 						if(object){
 							void * obj = object;
@@ -153,7 +155,7 @@ namespace kq{
 				void decrementWeak(){
 					LOGINOUT;
 					--countWeak;
-					LOGDEPTH;printf("w %d, s %d\n", count, countWeak);
+					//LOGDEPTH;printf("[%p]w %d, s %d\n", this, count, countWeak);
 					if(countWeak == 0){
 						if(count == 0 && this != &nullCounter){
 							destructor(this, 0);
@@ -176,16 +178,19 @@ namespace kq{
 				PtrOffset i;
 
 				void switchCounter(RefCounter * oc, PtrOffset oi){
-					(oc->*up)();
-					(c->*down)();
-					c = oc;
-					i = oi;
+					//printf("Switching counters\n");
+					if(c != oc){
+						(oc->*up)();
+						(c->*down)();
+						c = oc;
+						i = oi;
+					}
 				}
 
-				type * p() const{
+				type * p(){
 					type * p0;
 					if(c != &RefCounter::nullCounter){
-						p0 = c->getObjectLocation();
+						p0 = (type *)c->getObjectLocation();
 						if(!p0){
 							switchCounter(&RefCounter::nullCounter, i);
 						}
@@ -196,11 +201,12 @@ namespace kq{
 					return (p0 + i);
 				}
 
+				RefHolder(RefCounter * oc, PtrOffset oi):c(oc?oc:&RefCounter::nullCounter), i(oi), t(0){(c->*up)();}
 			public:
 				RefHolder():c(&RefCounter::nullCounter), i(0), t(0){(c->*up)();}
+				RefHolder(const RefHolder & o):c(o.c), i(o.i), t(o.t){(c->*up)();}
 				~RefHolder(){(c->*down)();}
-				kq_declare_template RefHolder(const RefHolder<type0, up0, down0> & o):c(o.c), i(o.i), t(o.t){(c->*up)();}
-				kq_declare_function_taking_constreference(const RefHolder & operator =){switchCounter(o.c, o.i); t = o.t;}
+				kq_declare_template explicit RefHolder(const RefHolder<type0, up0, down0> & o):c(o.c), i(o.i), t(o.t){(c->*up)();}
 				kq_declare_function_taking_constreference(ui32 operator -){return ((char *)p() - (char *)p());}
 				kq_overload_bool_operator(==);
 				kq_overload_bool_operator(!=);
@@ -217,6 +223,14 @@ namespace kq{
 				type & operator [](ui32 iOffset){return *(p() + iOffset);}
 				type * operator -> (){return p();}
 				type & operator * (){return *(p());}
+				operator bool(){return (p()!=0);}
+				RefHolder<type,up,down> & operator =(const RefHolder<type,up,down> & o){
+					switchCounter(o.c, o.i);
+					t = o.t;
+					return *this;
+				}
+
+
 				#undef kq_overload_bool_operator
 				#undef kq_declare_function_taking_constreference
 				#undef kq_declare_template
@@ -228,15 +242,19 @@ namespace kq{
 			class WeakPointer: public RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>{
 			public:
 				WeakPointer(){}
-				WeakPointer(const WeakPointer<type> &other):RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>(other){LOGINOUT;}
+				WeakPointer(RefCounter * oc, PtrOffset oi = 0):RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>(oc, oi){}
+				template<typename type2, void (RefCounter::*up2)(), void (RefCounter::*down2)()>
+				WeakPointer(const RefHolder<type2, up2, down2> &other):RefHolder<type, &RefCounter::incrementWeak, &RefCounter::decrementWeak>(other){}
 
 			};
 
 			template<typename type>
 			class Pointer: public RefHolder<type, &RefCounter::increment, &RefCounter::decrement>{
 			public:
-				Pointer(){LOGINOUT;}
-				Pointer(const Pointer<type> &other):RefHolder<type, &RefCounter::increment, &RefCounter::decrement>(other){LOGINOUT;}
+				Pointer(){}
+				Pointer(RefCounter * oc, PtrOffset oi = 0):RefHolder<type, &RefCounter::increment, &RefCounter::decrement>(oc, oi){}
+				template<typename type2, void (RefCounter::*up2)(), void (RefCounter::*down2)()>
+				Pointer(const RefHolder<type2,up2,down2> &other):RefHolder<type, &RefCounter::increment, &RefCounter::decrement>(other){}
 			};
 
 
