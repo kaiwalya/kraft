@@ -4,7 +4,8 @@ using namespace kq::core;
 using namespace kq::core::memory;
 
 
-
+#define _WIN32_WINNT 0x0502
+#define WINVER 0x0502
 #include "windows.h"
 #include "stdio.h"
 
@@ -94,7 +95,7 @@ public:
 			if(hasData()){
 				kq::core::memory::Pointer<LinkNode> pOldTail = getTail();
 				kq::core::memory::Pointer<DataNode> pDataNode = pOldTail->m_pNext;
-				pDataNodeOut = pDataNode->m_pData
+				pDataNodeOut = pDataNode->m_pData;
 				m_pTail = pDataNode->m_pNext;
 				return true;
 			}
@@ -107,7 +108,7 @@ public:
 
 			kq::core::memory::Pointer<LinkNode> pOldTail = getTail();
 			kq::core::memory::Pointer<DataNode> pDataNode = pOldTail->m_pNext;
-			pDataNodeOut = pDataNode->m_pData
+			pDataNodeOut = pDataNode->m_pData;
 			m_pTail = pDataNode->m_pNext;
 			return true;
 		};
@@ -148,7 +149,7 @@ public:
 	i32 output(c8 * pFormat, ...){
 	   va_list args;
 	   va_start( args, pFormat );	   
-	   i64 nChars = vsprintf_s<nMaxBytesInLogMessage>(m_sBuffer, pFormat, args);
+	   i64 nChars = vsprintf(m_sBuffer, pFormat, args);
 	   //Add null termination
 	   nChars++;
 	   i64 iRet;
@@ -170,13 +171,13 @@ public:
 	};
 
 	i32 log(c8 * pFormat, ...){
+		/*
 	   va_list args;
 	   va_start( args, pFormat );	   
 	   i64 nChars = vsprintf_s<nMaxBytesInLogMessage>(m_sBuffer, pFormat, args);
 
 		if(!m_fLog){
 			if(0 != fopen_s(&m_fLog, "out.txt", "w")){
-				_asm int 3;
 			}
 		}
 
@@ -184,6 +185,7 @@ public:
 			fwrite(m_sBuffer, (size_t)nChars, 1, m_fLog);
 			fflush(m_fLog);
 		}
+		*/
 
 		i64 iRet = 0;
 		/*
@@ -212,7 +214,7 @@ public:
 	i32 output(c16 * pFormat, ...){
 	   va_list args;
 	   va_start( args, pFormat );	   
-	   i64 nChars = vswprintf_s<nMaxBytesInLogMessage/2>(*(wchar_t (*)[nMaxBytesInLogMessage/2])m_sBuffer, pFormat, args);
+	   i64 nChars = vswprintf(*(wchar_t (*)[nMaxBytesInLogMessage/2])m_sBuffer, pFormat, args);
 	   //Add null termination
 	   nChars++;
 	   i64 iRet;

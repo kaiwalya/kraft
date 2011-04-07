@@ -3,7 +3,7 @@
 
 #include "core_IntegerTypes.hpp"
 #include "core_memory_RefCounter.hpp"
-
+/*
 namespace kq{
 	namespace core{
 		namespace konnect{
@@ -51,5 +51,5 @@ namespace kq{
 		};
 	};
 };
-
+*/
 #endif

@@ -1,5 +1,7 @@
 #include "core.hpp"
 
+#define _WIN32_WINNT 0x0602
+#define WINVER 0x0602
 #include "windows.h"
 
 using namespace kq;
