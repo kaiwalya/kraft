@@ -52,6 +52,7 @@ envEXP = Environment();
 envEXP.VariantDir('exp', 'projects/kq/code/source');
 sExpSources = ['exp/kqExperiments.cpp', envEXP.Glob('exp/core_*.cpp'), 'exp/ui_UserInterface.cpp'];
 if sSystem == 'Linux':
+	sExpSources += ['exp/ui_X_UserInterface.cpp'];
 	envEXP.Append(LIBS = 'X11:GL');
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');

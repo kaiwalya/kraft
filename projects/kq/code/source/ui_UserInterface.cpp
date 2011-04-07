@@ -76,7 +76,7 @@ public:
 
 */
 
-#if defined(__LINUX__)
+#if defined(__linux__) 
 #include "ui_X_UserInterface.hpp"
 
 Pointer<UserInterface> UserInterface::createInstance(MemoryWorker &mem){
@@ -97,7 +97,7 @@ Pointer<UserInterface> UserInterface::createInstance(MemoryWorker &mem){
 
     return pRet;
 }
-#else if defined(__APPLE__)
+#elif defined(__APPLE__)
 
 Pointer<UserInterface> UserInterface::createInstance(MemoryWorker &mem){
 	Pointer<UserInterface> pRet;
