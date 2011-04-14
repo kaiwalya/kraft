@@ -9,7 +9,7 @@ using namespace kq;
 using namespace kq::core;
 using namespace kq::core::data;
 
-BPlusTree::BPlusTree(kq::core::memory::MemoryWorker memworker, USmall bytesInKey, USmall bitsPerLevel)
+BPlusTree::BPlusTree(kq::core::memory::MemoryWorker & memworker, USmall bytesInKey, USmall bitsPerLevel)
 	:mem(memworker),
 	m_nBytesInKey(bytesInKey),
 	m_nBitsPerLevel(bitsPerLevel),

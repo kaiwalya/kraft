@@ -13,7 +13,7 @@ namespace kq{
 			//Basic B+Tree stuff
 			protected:
 				//Memory interface
-				kq::core::memory::MemoryWorker mem;
+				kq::core::memory::MemoryWorker & mem;
 
 				//Data Types
 				//Nibble counts, Level Counts, ByteCounts, etc
@@ -43,7 +43,7 @@ namespace kq{
 				USmall m_pNibbleMasks[8];
 
 			public:
-				BPlusTree(kq::core::memory::MemoryWorker memworker, USmall bytesInKey, USmall bitsPerLevel = 4);
+				BPlusTree(kq::core::memory::MemoryWorker & memworker, USmall bytesInKey, USmall bitsPerLevel = 4);
 				~BPlusTree();
 				bool map(const void * key, void * newV, void ** oldV = 0);
 				void * lookup(const void * key);

@@ -687,9 +687,129 @@ class D:public B, public C{
 
 };
 
+namespace kq{
+	namespace core{
+		namespace data{
+			class IDMap{
+				memory::MemoryWorker & mem;
+				BPlusTree tree;
+				typedef ui32 IDVal;
+				IDVal m_iNext;
+				IDVal m_nAlive;
+			public:
+				IDMap(memory::MemoryWorker & memworker)
+				:mem(memworker), tree(memworker, sizeof(IDVal)), m_iNext(1), m_nAlive(0){}
+
+				~IDMap(){}
+
+				IDVal getAliveIDCount(){return m_nAlive;}
+
+				template<typename t> IDVal create(t * p){
+					IDVal ret = 0;
+					if(tree.map(&(m_iNext), p)){
+						ret = m_iNext;
+						m_nAlive++;
+						m_iNext++;
+					}
+					return ret;
+				}
+
+				template<typename t> t * get(const IDVal id){
+					t * ret = 0;
+					if(id && id < m_iNext){
+						ret = tree.lookup(&id);
+					}
+					return ret;
+				}
+
+				template<typename t> t * destroy(const IDVal id){
+					t * ret = 0;
+					if(id && id < m_iNext){
+						if(tree.map(&id, 0, (void **)&ret)){
+							m_nAlive--;
+						}
+					}
+					return ret;
+				}
+
+			};
+		}
+		namespace flows{
+
+			class MemoryHolder{
+			public:
+				 virtual bool transfer(memory::MemoryWorker & mem, void *, ui32) = 0;
+			};
+
+			class Flow:protected MemoryHolder{
+				class Message{
+				protected:
+					memory::MemoryWorker & mem;
+				public:
+					Message(memory::MemoryWorker & memworker):mem(memworker){}
+					void * p;
+					ui32 n;
+					memory::Pointer<Message> pNext;
+				};
+
+				memory::MemoryWorker & mem;
+				memory::Pointer<Message> m_pLastWrittenMessage;
+			public:
+
+				bool transfer(memory::MemoryWorker & memmsg, void * p, ui32 n){
+					memory::Pointer<Message> pmsg = kq_core_memory_workerRefCountedClassNew(mem, Message, memmsg);
+					pmsg->p = p;
+					pmsg->n = n;
+					m_pLastWrittenMessage->pNext = pmsg;
+					m_pLastWrittenMessage = pmsg;
+				}
+
+			protected:
+				class FlowWriter: public Window{
+					memory::MemoryWorker & mem;
+					void * p;
+					ui32 n;
+					memory::Pointer<MemoryHolder> m_pHolder;
+				public:
+					FlowWriter(memory::MemoryWorker & memworker, memory::Pointer<MemoryHolder> pHolder):mem(memworker), p(0), n(0), m_pHolder(pHolder){}
+
+					virtual ui8 * getLocation(){return (ui8 *)p;}
+
+					ui32 getSize(){return n;}
+
+					bool resize(ui32 nBytes){
+						void * pnew = mem(p, nBytes);
+						if(pnew){
+							n = nBytes;
+							p = pnew;
+							return true;
+						}
+						return false;
+					}
+
+					void submit(){
+						m_pHolder->transfer(mem, p, n);
+						p = 0;
+						n = 0;
+					}
+
+					void next(){
+
+					}
+
+				};
+
+			public:
+			};
+		}
+	}
+}
+
+
 using namespace kq;
 using namespace kq::core;
 using namespace kq::core::memory;
+
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -704,46 +824,9 @@ int main(int /*argc*/, char ** /*argv*/){
 	    MemoryWorker mem = memStd;
 		PooledMemoryAllocator allocPool(memStd);
 		allocPool.getMemoryWorker(mem);
-
-        //kq::core::data::BPlusTree_test(mem);
-
 		{
-			kq::core::memory::Pointer<Window> pWindow;
-			kq::core::memory::Pointer<kq::ui::UserInterface> pUI;
-			{
-				pUI = kq::ui::UserInterface::createInstance(mem);
 
-				if(pUI){
-
-					if(pUI->getScreenCount()){
-						Pointer<Screen> pScreen = pUI->getScreen(0);
-						if(pScreen){
-
-							typedef FormatSpecification FS;
-							FS requests []  = {
-									{FS::rtPixelColorE, FS::pixclRGBA_8888},
-									{FS::rtOpenGLRenderable, true},
-									{FS::rtDoubleBufferingB, true},
-									{FS::rtNativeRenderable, true},
-									{FS::rtEnd, 0}
-							};
-							pWindow = pScreen->createRootWindow(requests);
-						}
-					}
-				}
-
-
-			}
-
-			if(pWindow && pUI){
-				pWindow->changeVisibility(true);
-				for(;;){
-					pUI->process();
-				}
-			}
 		}
-
-
 	}
 
 
