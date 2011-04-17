@@ -741,65 +741,91 @@ namespace kq{
 				 virtual bool transfer(memory::MemoryWorker & mem, void *, ui32) = 0;
 			};
 
-			class Flow:protected MemoryHolder{
+			class Stream{
+
 				class Message{
-				protected:
-					memory::MemoryWorker & mem;
-				public:
-					Message(memory::MemoryWorker & memworker):mem(memworker){}
+					kq::core::memory::MemoryWorker &mem;
 					void * p;
-					ui32 n;
-					memory::Pointer<Message> pNext;
+					kq::core::memory::Pointer<Message> pNext;
+				public:
+					Message(kq::core::memory::MemoryWorker &memworker, void * pmsg = 0):mem(memworker), p(pmsg), pNext(0){
+
+					}
+					~Message(){
+						if(p){
+							mem(p, 0);
+						}
+					}
+
+					void * getLocation(){
+						return p;
+					}
+
+					void setNext(kq::core::memory::Pointer<Message> pNext){
+						this->pNext = pNext;
+					}
+
+					kq::core::memory::Pointer<Message> getNext(){
+						return pNext;
+					}
+
 				};
 
-				memory::MemoryWorker & mem;
-				memory::Pointer<Message> m_pLastWrittenMessage;
 			public:
-
-				bool transfer(memory::MemoryWorker & memmsg, void * p, ui32 n){
-					memory::Pointer<Message> pmsg = kq_core_memory_workerRefCountedClassNew(mem, Message, memmsg);
-					pmsg->p = p;
-					pmsg->n = n;
-					m_pLastWrittenMessage->pNext = pmsg;
-					m_pLastWrittenMessage = pmsg;
-				}
-
-			protected:
-				class FlowWriter: public Window{
-					memory::MemoryWorker & mem;
-					void * p;
-					ui32 n;
-					memory::Pointer<MemoryHolder> m_pHolder;
+				class Reader{
+					kq::core::memory::Pointer<Message> m_pCurrent;
 				public:
-					FlowWriter(memory::MemoryWorker & memworker, memory::Pointer<MemoryHolder> pHolder):mem(memworker), p(0), n(0), m_pHolder(pHolder){}
+					void * getMessageLocation(){
+						return m_pCurrent->getLocation();
+					}
 
-					virtual ui8 * getLocation(){return (ui8 *)p;}
-
-					ui32 getSize(){return n;}
-
-					bool resize(ui32 nBytes){
-						void * pnew = mem(p, nBytes);
-						if(pnew){
-							n = nBytes;
-							p = pnew;
-							return true;
+					bool next(){
+						kq::core::memory::Pointer<Message> pNextMessage = m_pCurrent->getNext();
+						void * pnewlocation;
+						if(pNextMessage){
+							if(pNextMessage->getLocation()){
+								m_pCurrent = pNextMessage;
+								return true;
+							}
 						}
 						return false;
 					}
 
-					void submit(){
-						m_pHolder->transfer(mem, p, n);
-						p = 0;
-						n = 0;
+					kq::core::memory::Pointer<Message> setCurrent(kq::core::memory::Pointer<Message> p){
+						kq::core::memory::Pointer<Message> ret = m_pCurrent;
+						m_pCurrent = p;
+						return ret;
 					}
-
-					void next(){
-
-					}
-
 				};
-
+			protected:
+				kq::core::memory::MemoryWorker &mem;
+				kq::core::memory::Pointer<Message> m_pLast;
 			public:
+				Stream(kq::core::memory::MemoryWorker &memworker):mem(memworker){
+					m_pLast = kq_core_memory_workerRefCountedClassNew(mem, Message, mem);
+				}
+
+				bool write(kq::core::memory::MemoryWorker & mem, void * p){
+					if(p){
+						kq::core::memory::Pointer<Message> pMessage = kq_core_memory_workerRefCountedClassNew(this->mem, Message, mem, p);
+						m_pLast->setNext(pMessage);
+						m_pLast = pMessage;
+					}
+					return true;
+				}
+
+				kq::core::memory::Pointer<Reader> createReader(){
+
+					kq::core::memory::Pointer<Reader> pRet;
+					pRet = (kq_core_memory_workerRefCountedClassNew(mem, Reader));
+
+					if(pRet){
+						pRet->setCurrent(m_pLast);
+					}
+					return pRet;
+
+				}
+
 			};
 		}
 	}
@@ -825,6 +851,13 @@ int main(int /*argc*/, char ** /*argv*/){
 		PooledMemoryAllocator allocPool(memStd);
 		allocPool.getMemoryWorker(mem);
 		{
+
+			char p[] = "kaiwalya";
+			kq::core::flows::Stream s(mem);
+			kq::core::memory::Pointer<kq::core::flows::Stream::Reader> pReader = s.createReader();
+			s.write(mem, p);
+			pReader->next();
+			printf("message read %s\n", (char *)pReader->getMessageLocation());
 
 		}
 	}
