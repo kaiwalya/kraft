@@ -146,7 +146,7 @@ namespace kq{
 								decrementWeak();
 							}
 							else{
-								destructor(this, object);
+								destructor(this, obj);
 							}
 						}
 					}

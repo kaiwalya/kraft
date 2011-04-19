@@ -12,7 +12,7 @@ StandardLibraryMemoryAllocator::StandardLibraryMemoryAllocator(){
 
 StandardLibraryMemoryAllocator::~StandardLibraryMemoryAllocator(){
 	//printf("%d Bytes Leaked\n", m_nBytesAllocated);
-	printf("%d blocks leaked\n");
+	printf("%d blocks leaked\n", m_nAllocations);
 }
 
 ui32 StandardLibraryMemoryAllocator::getCurrentlyAllocatedByteCount(){

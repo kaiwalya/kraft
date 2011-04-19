@@ -736,13 +736,22 @@ namespace kq{
 		}
 		namespace flows{
 
+			typedef kq::core::ui8 Data;
 			class Stream{
 			protected:
 
 				class Message{
 				public:
 					kq::core::memory::Pointer<Message> pNext;
-					kq::core::memory::Pointer<kq::core::ui8> pData;
+					kq::core::memory::Pointer<Data> pData;
+
+					Message(){
+						printf("Message %p created\n", this);
+					}
+
+					~Message(){
+						printf("Message %p destroyed\n", this);
+					}
 				};
 
 			public:
@@ -750,16 +759,19 @@ namespace kq{
 					friend class Stream;
 					kq::core::memory::Pointer<Message> m_pCurrent;
 				public:
-					kq::core::memory::Pointer<kq::core::ui8> read(){
+					kq::core::memory::Pointer<Data> read(){
 						return m_pCurrent->pData;
 					}
 
 					bool next(){
+						printf("Reader %p next entered\n", this);
+						bool bRet = false;
 						if(m_pCurrent->pNext){
 							m_pCurrent = m_pCurrent->pNext;
-							return true;
+							bRet = true;
 						}
-						return false;
+						printf("Reader %p next leaving\n", this);
+						return bRet;
 					}
 				};
 			protected:
@@ -786,15 +798,12 @@ namespace kq{
 				}
 
 				kq::core::memory::Pointer<Reader> createReader(){
-
 					kq::core::memory::Pointer<Reader> pRet;
 					pRet = (kq_core_memory_workerRefCountedClassNew(mem, Reader));
-
 					if(pRet){
 						pRet->m_pCurrent = m_pLast;
 					}
 					return pRet;
-
 				}
 
 			};
@@ -823,16 +832,27 @@ int main(int /*argc*/, char ** /*argv*/){
 		allocPool.getMemoryWorker(mem);
 		{
 
-			char p[] = "kaiwalya";
-			char p2[] = "kaiwalya2";
+			char p[] = "kaiwalya\n";
+			char p2[] = "kaiwalya2\n";
 			kq::core::flows::Stream s(mem);
 			kq::core::memory::Pointer<kq::core::flows::Stream::Reader> pReader = s.createReader();
 
-			kq::core::memory::Pointer<kq::core::i8> pData = kq_core_memory_workerRefCountedMalloc(mem, sizeof(p));
 			kq::core::memory::Pointer<char> pData2;
-			memcpy(pData.location(), p, sizeof(p));
+			kq::core::memory::Pointer<kq::core::i8> pData;
 
+			pData = kq_core_memory_workerRefCountedMalloc(mem, sizeof(p) + 20);
+			memcpy(pData.location(), p, sizeof(p));
 			s.write(pData.coerce());
+
+			pData = kq_core_memory_workerRefCountedMalloc(mem, sizeof(p) + 20);
+			memcpy(pData.location(), p2, sizeof(p2));
+			s.write(pData.coerce());
+
+			pReader->next();
+			pData2.coerce(pReader->read());
+			printf(pData2);
+
+			pReader->next();
 			pData2.coerce(pReader->read());
 			printf(pData2);
 
