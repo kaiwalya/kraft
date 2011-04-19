@@ -224,6 +224,16 @@ namespace kq{
 				type * operator -> (){return p();}
 				type & operator * (){return *(p());}
 				operator bool(){return (p()!=0);}
+				type * location(){return p();}
+				operator type * (){return p();}
+				RefCounter * coerce(PtrOffset * pOffset = 0){
+					if(pOffset){
+						*pOffset = i;
+					}
+					return c;
+				}
+				kq_declare_function_taking_constreference(void coerce){switchCounter(o.c, o.i);}
+
 				RefHolder<type,up,down> & operator =(const RefHolder<type,up,down> & o){
 					switchCounter(o.c, o.i);
 					t = o.t;
