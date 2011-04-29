@@ -732,12 +732,31 @@ namespace kq{
 					return ret;
 				}
 
+			public:
+				kq::core::data::BPlusTree::Path getIterator(){
+					return kq::core::data::BPlusTree::Path(&tree);
+				}
+
 			};
+
 		}
 		namespace flows{
 
 			typedef kq::core::ui8 Data;
-			class Stream{
+			//typedef kq::core::ui8 ID;
+
+			class IReader{
+			public:
+				virtual kq::core::memory::Pointer<Data> read() = 0;
+				virtual bool next() = 0;
+			};
+
+			class IWriter{
+			public:
+				virtual bool write(kq::core::memory::Pointer<kq::core::ui8> pData) = 0;
+			};
+
+			class Stream:public IWriter{
 			protected:
 
 				class Message{
@@ -745,17 +764,10 @@ namespace kq{
 					kq::core::memory::Pointer<Message> pNext;
 					kq::core::memory::Pointer<Data> pData;
 
-					Message(){
-						printf("Message %p created\n", this);
-					}
-
-					~Message(){
-						printf("Message %p destroyed\n", this);
-					}
 				};
 
 			public:
-				class Reader{
+				class Reader:public IReader{
 					friend class Stream;
 					kq::core::memory::Pointer<Message> m_pCurrent;
 				public:
@@ -764,13 +776,13 @@ namespace kq{
 					}
 
 					bool next(){
-						printf("Reader %p next entered\n", this);
+						//printf("Reader %p next entered\n", this);
 						bool bRet = false;
 						if(m_pCurrent->pNext){
 							m_pCurrent = m_pCurrent->pNext;
 							bRet = true;
 						}
-						printf("Reader %p next leaving\n", this);
+						//printf("Reader %p next leaving\n", this);
 						return bRet;
 					}
 				};
@@ -797,7 +809,8 @@ namespace kq{
 					return false;
 				}
 
-				kq::core::memory::Pointer<Reader> createReader(){
+			protected:
+				virtual kq::core::memory::Pointer<Reader> createReader(){
 					kq::core::memory::Pointer<Reader> pRet;
 					pRet = (kq_core_memory_workerRefCountedClassNew(mem, Reader));
 					if(pRet){
@@ -807,14 +820,190 @@ namespace kq{
 				}
 
 			};
+
+			typedef void (*Processor)(void);
+			typedef ui32 PinID;
+			typedef ui32 SocketID;
+
+			struct Pin{
+				const SocketID sockid;
+				const PinID pinid;
+				Pin(SocketID s, PinID p):sockid(s), pinid(p){}
+				bool operator >>(Pin dest){
+					return false;
+				}
+			};
+
+			struct Socket{
+			public:
+				const SocketID id;
+				Socket(SocketID sockid = 0):id(sockid){};
+				Pin operator [] (PinID pid){return Pin(id, pid);}
+
+			};
+
+			class Board{
+
+				class State{
+					kq::core::memory::MemoryWorker & mem;
+					Board * board;
+					friend class Board;
+					kq::core::data::IDMap map;
+					struct ProcessorInfo{
+						SocketID sockid;
+						enum ProcessorState{
+							sEmbryo,
+							sAlive_Active,
+							sAlive_Ready,
+							sAlive_Sleeping,
+							sDead,
+						};
+						ProcessorState state;
+						Processor proc;
+						void (*processProcessor)(ProcessorInfo *);
+					};
+
+					static void processEmbryoProcessor(ProcessorInfo * pInfo){
+						pInfo->proc();
+					}
+
+					SocketID initializeProcessorInfo(ProcessorInfo * info, Processor proc){
+						SocketID ret = (SocketID)(map.create(info));
+						info->sockid = ret;
+						info->processProcessor = &processEmbryoProcessor;
+						info->state = ProcessorInfo::sEmbryo;
+						info->proc = proc;
+						return ret;
+					}
+					void finalizeProcessorInfo(ProcessorInfo * pInfo){
+						printf("State(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
+						if(pInfo->state != ProcessorInfo::sDead){
+							pInfo->processProcessor(pInfo);
+						}
+						mem(pInfo, 0);
+					}
+				public:
+					State(kq::core::memory::MemoryWorker & memworker):mem(memworker), map(memworker){
+						printf("State(%p)::State()\n", this);
+					}
+
+					~State(){
+						kq::core::data::BPlusTree::Path p = map.getIterator();
+						ProcessorInfo * pInfo;
+						if(p.init_first((void **)&(pInfo))){
+							do{
+								finalizeProcessorInfo(pInfo);
+							}while(p.next((void **)&(pInfo)));
+						}
+						printf("State(%p)::~State()\n", this);
+					}
+
+					Socket attach(Processor proc){
+						SocketID ret;
+
+						ProcessorInfo * info = (ProcessorInfo *)mem(0, sizeof(ProcessorInfo));
+						if(info){
+							ret = initializeProcessorInfo(info, proc);
+						}
+
+						return Socket(ret);
+					}
+
+					void detach(Socket s){
+
+					}
+				};
+
+				State * state;
+
+				static Board * gRoot;
+				static Board * findBoard(){
+					Board * ret = 0;
+					ret = gRoot;
+					return ret;
+				}
+
+				static State * findState(){
+					Board * board = findBoard();
+					if(board){
+						return board->state;
+					}
+					return 0;
+				}
+
+			public:
+				Board():state(0){
+					printf("Board(%p)::Board()\n", this);
+				}
+
+				~Board(){
+					printf("Board(%p)::~Board()\n", this);
+				}
+				static bool initialize(kq::core::memory::MemoryWorker & memworker){
+					Board * board = findBoard();
+					if(board){
+						if(!board->state){
+							board->state = (State *)memworker(0, sizeof(State));
+							if(board->state){
+								new (board->state) State(memworker);
+								board->state->board = board;
+								return true;
+							}
+						}
+					}
+					return false;
+				}
+
+				static bool finalize(){
+					Board * board = findBoard();
+					if(board){
+						if(board->state){
+							kq::core::memory::MemoryWorker & mem = board->state->mem;
+							board->state->~State();
+							mem(board->state, 0);
+							return true;
+						}
+					}
+					return false;
+				}
+
+				static Socket attach(Processor proc){
+					State * s = findState();
+					if(s) return s->attach(proc);
+					return Socket();
+				}
+
+				static void detach(Socket s){
+					State * state = findState();
+					if(state) state->detach(s);
+				}
+
+			};
 		}
 	}
 }
+
+static kq::core::flows::Board rootboard;
+kq::core::flows::Board * kq::core::flows::Board::gRoot = &rootboard;
 
 
 using namespace kq;
 using namespace kq::core;
 using namespace kq::core::memory;
+using namespace kq::core::data;
+using namespace kq::core::flows;
+
+void producer(){
+	printf("In producer\n");
+	printf("Out producer\n");
+}
+
+void consumer(){
+	printf("In consumer\n");
+	printf("Out producer\n");
+}
+
+
 
 
 int main(int /*argc*/, char ** /*argv*/){
@@ -825,6 +1014,13 @@ int main(int /*argc*/, char ** /*argv*/){
 	MemoryWorker memStd;
 	allocStd.getMemoryWorker(memStd);
 
+	/*
+	void * pStackTop = mem(0, 1024);
+	void * pStackBase = (ui8*)pStackBottom + 102;
+	void * pRet = rc(pStackTop, test, (void *)0x00FF00FF);
+	printf("test returned %p\n", pRet);
+	*/
+
 
 	{
 	    MemoryWorker mem = memStd;
@@ -832,32 +1028,20 @@ int main(int /*argc*/, char ** /*argv*/){
 		allocPool.getMemoryWorker(mem);
 		{
 
-			char p[] = "kaiwalya\n";
-			char p2[] = "kaiwalya2\n";
-			kq::core::flows::Stream s(mem);
-			kq::core::memory::Pointer<kq::core::flows::Stream::Reader> pReader = s.createReader();
-
-			kq::core::memory::Pointer<char> pData2;
-			kq::core::memory::Pointer<kq::core::i8> pData;
-
-			pData = kq_core_memory_workerRefCountedMalloc(mem, sizeof(p) + 20);
-			memcpy(pData.location(), p, sizeof(p));
-			s.write(pData.coerce());
-
-			pData = kq_core_memory_workerRefCountedMalloc(mem, sizeof(p) + 20);
-			memcpy(pData.location(), p2, sizeof(p2));
-			s.write(pData.coerce());
-
-			pReader->next();
-			pData2.coerce(pReader->read());
-			printf(pData2);
-
-			pReader->next();
-			pData2.coerce(pReader->read());
-			printf(pData2);
+			if(Board::initialize(mem)){
+				Socket p = Board::attach(&producer);
+				Socket c = Board::attach(&consumer);
+				if(p.id && c.id){
+					if(p[0] >> c[0]){
+						printf("Link Successful\n");
+					}
+				}
+				Board::finalize();
+			}
 
 		}
 	}
+
 
 
 	return 0;
