@@ -860,17 +860,17 @@ namespace kq{
 						};
 						ProcessorState state;
 						Processor proc;
-						void (*processProcessor)(ProcessorInfo *);
+						void (State::*processProcessor)();
 					};
 
-					static void processEmbryoProcessor(ProcessorInfo * pInfo){
-						pInfo->proc();
+					void processEmbryoProcessor(){
+
 					}
 
 					SocketID initializeProcessorInfo(ProcessorInfo * info, Processor proc){
 						SocketID ret = (SocketID)(map.create(info));
 						info->sockid = ret;
-						info->processProcessor = &processEmbryoProcessor;
+						info->processProcessor = &State::processEmbryoProcessor;
 						info->state = ProcessorInfo::sEmbryo;
 						info->proc = proc;
 						return ret;
@@ -878,7 +878,8 @@ namespace kq{
 					void finalizeProcessorInfo(ProcessorInfo * pInfo){
 						printf("State(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
 						if(pInfo->state != ProcessorInfo::sDead){
-							pInfo->processProcessor(pInfo);
+							(this->*pInfo->processProcessor)();
+							//*(this).(pInfo->processProcessor);
 						}
 						mem(pInfo, 0);
 					}
