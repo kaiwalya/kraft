@@ -56,6 +56,7 @@ if sSystem == 'Linux':
 	envEXP.Append(LIBS = 'X11:GL');
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
+	envEXP.Append(CCFLAGS = '-g -O3');
 	
 envEXP.Program('experiments', sExpSources);
 

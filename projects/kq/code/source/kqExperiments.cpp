@@ -669,6 +669,7 @@ public:
 using namespace kq::ui;
 
 #include "unistd.h"
+#include "setjmp.h"
 
 class A{
 
@@ -686,6 +687,35 @@ class C:/*virtual*/ public A{
 class D:public B, public C{
 
 };
+
+static void * remoteCall(void * stacklocation, size_t stacksize, void * (*fn)(void *), void * data) __attribute__((noinline));
+static void * remoteCall(void * stacklocation, size_t stacksize, void * (*fn)(void *), void * data){
+
+	//If is optimized at compile time in release
+	if(sizeof(void *) == sizeof(kq::core::ui64)){
+
+		//Prepare stack
+		{
+			volatile register kq::core::ui64 sp asm("rsp");
+			sp = (kq::core::ui64)stacklocation + stacksize;
+			//Dont know why the compiler optimizes the following line out?
+			//sp = sp & 0xFFFFFFFFFFFFFFF0;
+		}
+
+		fn(data);
+
+		//Undo stack effects
+		{
+			//Without this last line leave instruction calls are wrong
+			//Also makes sure that in release builds, fn(data) is not a tail call
+			//If this is not present leave instruction will execute before the fn call and restore the stack
+			volatile register kq::core::ui64 bp asm("rbp");
+			volatile register kq::core::ui64 sp asm("rsp");
+			sp = bp;
+		}
+	}
+
+}
 
 namespace kq{
 	namespace core{
@@ -860,26 +890,40 @@ namespace kq{
 						};
 						ProcessorState state;
 						Processor proc;
-						void (State::*processProcessor)();
+						void (State::*processProcessor)(ProcessorInfo *);
 					};
 
-					void processEmbryoProcessor(){
-
+					static void * setupContext(void * pinfo){
+						if(!pinfo){
+							return 0;
+						}
+						ProcessorInfo *info = (ProcessorInfo *)pinfo;
+						printf("setting up context %p\n", info);
 					}
-
 					SocketID initializeProcessorInfo(ProcessorInfo * info, Processor proc){
 						SocketID ret = (SocketID)(map.create(info));
 						info->sockid = ret;
-						info->processProcessor = &State::processEmbryoProcessor;
-						info->state = ProcessorInfo::sEmbryo;
 						info->proc = proc;
+
+						//Setup context
+						{
+							const size_t SSZ = 1024;
+							void * stack = mem(0, SSZ);
+							if(stack){
+								remoteCall(stack, SSZ, setupContext, info);
+								mem(stack, 0);
+							}
+						}
+						info->processProcessor = 0;//&State::processEmbryoProcessor;
+						info->state = ProcessorInfo::sDead;
+
 						return ret;
 					}
 					void finalizeProcessorInfo(ProcessorInfo * pInfo){
 						printf("State(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
 						if(pInfo->state != ProcessorInfo::sDead){
-							(this->*pInfo->processProcessor)();
-							//*(this).(pInfo->processProcessor);
+							(this->*pInfo->processProcessor)(pInfo);
+
 						}
 						mem(pInfo, 0);
 					}
@@ -1024,9 +1068,9 @@ int main(int /*argc*/, char ** /*argv*/){
 
 
 	{
-	    MemoryWorker mem = memStd;
-		PooledMemoryAllocator allocPool(memStd);
-		allocPool.getMemoryWorker(mem);
+		MemoryWorker mem = memStd;
+		//PooledMemoryAllocator allocPool(memStd);
+		//allocPool.getMemoryWorker(mem);
 		{
 
 			if(Board::initialize(mem)){
