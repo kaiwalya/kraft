@@ -874,65 +874,78 @@ namespace kq{
 
 			class Board{
 
-				class State{
+				class BoardState{
+
+					struct ProcessorInfo{
+
+						Processor proc;
+
+
+						SocketID sockid;
+						BoardState * boardstate;
+
+						enum ProcessorState{
+
+						};
+						void * stacklocation;
+						size_t stacksize;
+
+						jmp_buf * context[2];
+					};
+
 					kq::core::memory::MemoryWorker & mem;
 					Board * board;
 					friend class Board;
 					kq::core::data::IDMap map;
-					struct ProcessorInfo{
-						SocketID sockid;
-						enum ProcessorState{
-							sEmbryo,
-							sAlive_Active,
-							sAlive_Ready,
-							sAlive_Sleeping,
-							sDead,
-						};
-						ProcessorState state;
-						Processor proc;
-						void (State::*processProcessor)(ProcessorInfo *);
-					};
 
-					static void * setupContext(void * pinfo){
-						if(!pinfo){
-							return 0;
+					void run(ProcessorInfo * info){
+						int iRet = setjmp(*info->context[1]);
+						if(iRet == 0){
+							longjmp(*info->context[0], 1);
 						}
-						ProcessorInfo *info = (ProcessorInfo *)pinfo;
-						printf("setting up context %p\n", info);
 					}
-					SocketID initializeProcessorInfo(ProcessorInfo * info, Processor proc){
-						SocketID ret = (SocketID)(map.create(info));
-						info->sockid = ret;
-						info->proc = proc;
 
-						//Setup context
-						{
-							const size_t SSZ = 1024;
-							void * stack = mem(0, SSZ);
-							if(stack){
-								remoteCall(stack, SSZ, setupContext, info);
-								mem(stack, 0);
+					void harness(ProcessorInfo * info){
+
+
+						int iRet = setjmp(*info->context[0]);
+						if(iRet != 0){
+							//Dont have any hopes of returning from here
+							{
+								volatile register void ** bp asm("rbp");
+								*bp = 0;
 							}
-						}
-						info->processProcessor = 0;//&State::processEmbryoProcessor;
-						info->state = ProcessorInfo::sDead;
 
-						return ret;
+							info->proc();
+
+							mem(info->context[0], 0);
+							info->context[0] = info->context[1];
+
+							//Stack on which this function is executing will be gone
+							mem(info->stacklocation, 0);
+							info->stacklocation = 0;
+							longjmp(*info->context[1], 1);
+
+						}
+
 					}
-					void finalizeProcessorInfo(ProcessorInfo * pInfo){
-						printf("State(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
-						if(pInfo->state != ProcessorInfo::sDead){
-							(this->*pInfo->processProcessor)(pInfo);
+					static void * _harness(void * data){
+						ProcessorInfo * info = (ProcessorInfo *)data;
+						info->boardstate->harness(info);
+						return 0;
+					}
 
-						}
+					void finalizeProcessorInfo(ProcessorInfo * pInfo){
+						printf("BoardState(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
+						run(pInfo);
 						mem(pInfo, 0);
 					}
 				public:
-					State(kq::core::memory::MemoryWorker & memworker):mem(memworker), map(memworker){
-						printf("State(%p)::State()\n", this);
+					BoardState(kq::core::memory::MemoryWorker & memworker):mem(memworker), map(memworker){
+						printf("BoardState(%p)::BoardState()\n", this);
 					}
 
-					~State(){
+					~BoardState(){
 						kq::core::data::BPlusTree::Path p = map.getIterator();
 						ProcessorInfo * pInfo;
 						if(p.init_first((void **)&(pInfo))){
@@ -940,26 +953,56 @@ namespace kq{
 								finalizeProcessorInfo(pInfo);
 							}while(p.next((void **)&(pInfo)));
 						}
-						printf("State(%p)::~State()\n", this);
+						printf("BoardState(%p)::~BoardState()\n", this);
 					}
 
 					Socket attach(Processor proc){
-						SocketID ret;
+						SocketID ret = 0;
+						const size_t stacksize = 1024;
 
-						ProcessorInfo * info = (ProcessorInfo *)mem(0, sizeof(ProcessorInfo));
-						if(info){
-							ret = initializeProcessorInfo(info, proc);
+						size_t sz[] = {sizeof(ProcessorInfo), stacksize, sizeof(jmp_buf), sizeof(jmp_buf)};
+						const int n = sizeof(sz)/sizeof(sz[0]);
+						void * ptr[n];
+						int i = 0;
+						while(i < n){
+							ptr[i] = mem(0, sz[i]);
+							if(!ptr[i]){
+								break;
+							}
+							i++;
+						}
+						if(i == n){
+
+							ProcessorInfo * info = (ProcessorInfo *)ptr[0];
+
+							info->proc = proc;
+							info->sockid = (SocketID)(map.create(info));
+							ret = info->sockid;
+
+							info->stacklocation = ptr[1];
+							info->stacksize = stacksize;
+
+							info->context[0] = (jmp_buf *)ptr[2];
+							info->context[1] = (jmp_buf *)ptr[3];
+
+							info->boardstate = this;
+
+							remoteCall(info->stacklocation, info->stacksize, _harness, info);
+
+						}
+						else{
+
+							while(i){
+								i--;
+								mem(ptr[i], 0);
+							}
 						}
 
 						return Socket(ret);
 					}
-
-					void detach(Socket s){
-
-					}
 				};
 
-				State * state;
+				BoardState * state;
 
 				static Board * gRoot;
 				static Board * findBoard(){
@@ -968,7 +1011,7 @@ namespace kq{
 					return ret;
 				}
 
-				static State * findState(){
+				static BoardState * findState(){
 					Board * board = findBoard();
 					if(board){
 						return board->state;
@@ -988,9 +1031,9 @@ namespace kq{
 					Board * board = findBoard();
 					if(board){
 						if(!board->state){
-							board->state = (State *)memworker(0, sizeof(State));
+							board->state = (BoardState *)memworker(0, sizeof(BoardState));
 							if(board->state){
-								new (board->state) State(memworker);
+								new (board->state) BoardState(memworker);
 								board->state->board = board;
 								return true;
 							}
@@ -1004,7 +1047,7 @@ namespace kq{
 					if(board){
 						if(board->state){
 							kq::core::memory::MemoryWorker & mem = board->state->mem;
-							board->state->~State();
+							board->state->~BoardState();
 							mem(board->state, 0);
 							return true;
 						}
@@ -1013,16 +1056,10 @@ namespace kq{
 				}
 
 				static Socket attach(Processor proc){
-					State * s = findState();
+					BoardState * s = findState();
 					if(s) return s->attach(proc);
 					return Socket();
 				}
-
-				static void detach(Socket s){
-					State * state = findState();
-					if(state) state->detach(s);
-				}
-
 			};
 		}
 	}
@@ -1045,7 +1082,7 @@ void producer(){
 
 void consumer(){
 	printf("In consumer\n");
-	printf("Out producer\n");
+	printf("Out consumer\n");
 }
 
 
