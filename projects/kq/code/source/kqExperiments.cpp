@@ -851,7 +851,12 @@ namespace kq{
 
 			};
 
-			typedef void (*Processor)(void);
+			class Board;
+			struct BootInfo{
+				void * bootparam;
+				Board * board;
+			};
+			typedef void (*Processor)(BootInfo * info);
 			typedef ui32 PinID;
 			typedef ui32 SocketID;
 
@@ -878,18 +883,27 @@ namespace kq{
 
 					struct ProcessorInfo{
 
+						enum ProcessorState{
+							sNotReady, //Bad state
+							sReady,	//Can be scheduled and will run.
+							sRunning, //Currently running
+							sWaiting, //Paused for event
+							sDone, //Finished executing proc
+							sDead, //Finished or error
+						};
+
+						//Valid always
+						ProcessorState state;
+
+						//Valid from sReady <= state
 						Processor proc;
-
-
+						void * bootparam;
 						SocketID sockid;
 						BoardState * boardstate;
 
-						enum ProcessorState{
-
-						};
+						//Valid from sReady <= state <= sDone
 						void * stacklocation;
 						size_t stacksize;
-
 						jmp_buf * context[2];
 					};
 
@@ -903,31 +917,40 @@ namespace kq{
 						if(iRet == 0){
 							longjmp(*info->context[0], 1);
 						}
+						else{
+							//state Should be sDone here.
+
+							info->state = ProcessorInfo::sDead;
+							mem(info->context[0], 0);
+							mem(info->context[1], 0);
+
+							//You better not be on this stack
+							mem(info->stacklocation, 0);
+						}
 					}
 
 					void harness(ProcessorInfo * info){
 
-
 						int iRet = setjmp(*info->context[0]);
-						if(iRet != 0){
+						if(iRet == 0){
+							//this path returns
+							info->state = ProcessorInfo::sReady;
+						}
+						else{
+							info->state = ProcessorInfo::sRunning;
+
 							//Dont have any hopes of returning from here
 							{
 								volatile register void ** bp asm("rbp");
 								*bp = 0;
 							}
-
-							info->proc();
-
-							mem(info->context[0], 0);
-							info->context[0] = info->context[1];
-
-							//Stack on which this function is executing will be gone
-							mem(info->stacklocation, 0);
-							info->stacklocation = 0;
+							BootInfo bootinfo;
+							bootinfo.board = this->board;
+							bootinfo.bootparam = info->bootparam;
+							info->proc(&bootinfo);
+							info->state = ProcessorInfo::sDone;
 							longjmp(*info->context[1], 1);
-
 						}
-
 					}
 					static void * _harness(void * data){
 						ProcessorInfo * info = (ProcessorInfo *)data;
@@ -956,7 +979,7 @@ namespace kq{
 						printf("BoardState(%p)::~BoardState()\n", this);
 					}
 
-					Socket attach(Processor proc){
+					Socket attach(Processor proc, void * pBootParam){
 						SocketID ret = 0;
 						const size_t stacksize = 1024;
 
@@ -974,19 +997,16 @@ namespace kq{
 						if(i == n){
 
 							ProcessorInfo * info = (ProcessorInfo *)ptr[0];
-
+							info->state = ProcessorInfo::sNotReady;
 							info->proc = proc;
+							info->bootparam = pBootParam;
 							info->sockid = (SocketID)(map.create(info));
 							ret = info->sockid;
-
 							info->stacklocation = ptr[1];
 							info->stacksize = stacksize;
-
 							info->context[0] = (jmp_buf *)ptr[2];
 							info->context[1] = (jmp_buf *)ptr[3];
-
 							info->boardstate = this;
-
 							remoteCall(info->stacklocation, info->stacksize, _harness, info);
 
 						}
@@ -1007,7 +1027,8 @@ namespace kq{
 				static Board * gRoot;
 				static Board * findBoard(){
 					Board * ret = 0;
-					ret = gRoot;
+
+					if(!ret) ret = gRoot;
 					return ret;
 				}
 
@@ -1055,11 +1076,12 @@ namespace kq{
 					return false;
 				}
 
-				static Socket attach(Processor proc){
+				static Socket attach(Processor proc, void * pBootParam = 0){
 					BoardState * s = findState();
-					if(s) return s->attach(proc);
+					if(s) return s->attach(proc, pBootParam);
 					return Socket();
 				}
+
 			};
 		}
 	}
@@ -1075,14 +1097,22 @@ using namespace kq::core::memory;
 using namespace kq::core::data;
 using namespace kq::core::flows;
 
-void producer(){
-	printf("In producer\n");
-	printf("Out producer\n");
+void producer(BootInfo * pInfo){
+	MemoryWorker & mem = *(MemoryWorker *)pInfo->bootparam;
+	if(Board::initialize(mem)){
+		printf("In producer\n");
+		printf("Out producer\n");
+		Board::finalize();
+	}
 }
 
-void consumer(){
-	printf("In consumer\n");
-	printf("Out consumer\n");
+void consumer(BootInfo * pInfo){
+	MemoryWorker & mem = *(MemoryWorker *)pInfo->bootparam;
+	if(Board::initialize(mem)){
+		printf("In consumer\n");
+		printf("Out consumer\n");
+		Board::finalize();
+	}
 }
 
 
@@ -1096,14 +1126,6 @@ int main(int /*argc*/, char ** /*argv*/){
 	MemoryWorker memStd;
 	allocStd.getMemoryWorker(memStd);
 
-	/*
-	void * pStackTop = mem(0, 1024);
-	void * pStackBase = (ui8*)pStackBottom + 102;
-	void * pRet = rc(pStackTop, test, (void *)0x00FF00FF);
-	printf("test returned %p\n", pRet);
-	*/
-
-
 	{
 		MemoryWorker mem = memStd;
 		//PooledMemoryAllocator allocPool(memStd);
@@ -1113,6 +1135,7 @@ int main(int /*argc*/, char ** /*argv*/){
 			if(Board::initialize(mem)){
 				Socket p = Board::attach(&producer);
 				Socket c = Board::attach(&consumer);
+
 				if(p.id && c.id){
 					if(p[0] >> c[0]){
 						printf("Link Successful\n");
