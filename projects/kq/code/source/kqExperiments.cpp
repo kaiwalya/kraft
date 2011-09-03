@@ -59,26 +59,26 @@ namespace kq{
 	namespace flows{
 
 
-		class IResource{
+		class IResourcer{
 		public:
 			//The locks can be used as follows
-			virtual bool lockResource(bool bExclusive) = 0;
-			virtual bool unlockResource() = 0;
+			virtual bool lockResourcer(bool bExclusive) = 0;
+			virtual bool unlockResourcer() = 0;
 		};
 
-		class IFlowWriter: public IResource{
+		class IFlowWriter: public IResourcer{
 			//When a writer is exclusively locked by a processor it means that only that processor can write to this flow.
 			//When a writer is shared locked by a processor multiple processors can atomically write to the flow
 		public:
 			virtual void write(const void * pBytes, kq::core::ui64 nBytes);
 		};
 
-		class IFlowReader: public IResource{
+		class IFlowReader: public IResourcer{
 		public:
 			virtual void read(void * pBytes, kq::core::ui64 nBytes);
 		};
 
-		class IFlowTuple: public IResource{
+		class IFlowTuple: public IResourcer{
 			//An ordered set of flows
 		};
 
@@ -129,7 +129,7 @@ namespace kq{
 		};
 
 
-		class IFlow : public IResource{
+		class IFlow : public IResourcer{
 			//Fifo
 		public:
 			//User has forgotten this flow object and hence has no way of getting back to this one
@@ -759,18 +759,64 @@ namespace kq{
 
 #include "pthread.h"
 
+#include "stdarg.h"
+#include "assert.h"
+
 namespace kq{
 	namespace core{
 		namespace debug{
-			void assert(bool condition){
-				if(!condition){
-					*(char *)0 = 0;
-				}
+			void assume(kq::core::ui32 iVal, ...){
+				assert(iVal);
 			}
+
+			class Log{
+				bool bLogging;
+			public:
+				Log(){bLogging = false;}
+				virtual void enableLogging(){bLogging = true;}
+				virtual void disableLogging(){bLogging = false;}
+				void log(const char * format, ...){
+					va_list args;
+					va_start (args, format);
+					if(bLogging)
+						vprintf (format, args);
+					va_end (args);
+				}
+			};
 		}
+
 		namespace system{
 
-			class Mutex{
+			class Resourcer{
+
+			public:
+				typedef kq::core::ui32 ResourceCount;
+
+				class ResourceManager:virtual kq::core::debug::Log{
+					volatile static kq::core::ui32 nResourcers;
+				public:
+					ResourceManager(){enableLogging();}
+					~ResourceManager(){
+						log("%d resourcers leaked\n", nResourcers);
+					}
+					void operator+=(ResourceCount c){
+						nResourcers+=c;
+					}
+					void operator-=(ResourceCount c){
+						nResourcers-=c;
+					}
+				};
+
+				static ResourceManager manager;
+				kq::core::ui32 nResources;
+			public:
+				Resourcer():nResources(0){}
+				~Resourcer(){kq::core::debug::assume(!nResources);}
+				void initialize(int iCount = 1){manager+=iCount;nResources+=iCount;}
+				void finalize(int iCount = 1){manager-=iCount;nResources-=iCount;}
+			};
+
+			class Mutex: virtual public kq::core::debug::Log, private Resourcer{
 				pthread_mutex_t mutex;
 
 			public:
@@ -793,39 +839,43 @@ namespace kq{
 
 				Error initialize(){
 					if(0 == pthread_mutex_init(&mutex, 0)){
+						Resourcer::initialize();
 						return kErrNone;
 					}
 					return kErrSome;
 				}
 
 				void finalize(){
+					Resourcer::finalize();
 					pthread_mutex_destroy(&mutex);
 				}
 
 				Error lock(){
-					printf("Locking %p...", this);
+					log("[%p]Lock %p...", pthread_self(), this);
 					if(0 == pthread_mutex_lock(&mutex)){
-						printf("Locked\n");
+						log("Locked\n");
+						Resourcer::initialize();
 						return kErrNone;
 					}
-					printf("Error\n");
+					printf("Lock Error\n");
 					return kErrSome;
 				}
 
 				Error unlock(){
-					printf("Unlocking %p...", this);
+					log("[%p]Lock %p...", pthread_self(), this);
 					if(0 == pthread_mutex_unlock(&mutex)){
-						printf("UnLocked\n");
+						log("UnLocked\n");
+						Resourcer::finalize();
 						return kErrNone;
 					}
-					printf("UnLocked\n");
+					log("UnLock Error\n");
 					return kErrSome;
 				}
 
 
 			};
 
-			class Condition{
+			class Condition: virtual public kq::core::debug::Log, private Resourcer{
 				pthread_cond_t cond;
 				bool bWake;
 
@@ -838,6 +888,7 @@ namespace kq{
 					Error err = kErrSome;
 					if(0 == pthread_cond_init(&cond, 0)){
 						err = kErrNone;
+						Resourcer::initialize();
 						goto done;
 					}
 					done:
@@ -846,20 +897,26 @@ namespace kq{
 				}
 
 				void finalize(){
+					Resourcer::finalize();
 					pthread_cond_destroy(&cond);
 				}
 
 				Error sleep(Mutex * m){
 					Error err = kErrNone;
 					bWake = false;
+					log("Cond %p and Mutex %p sleeping\n", this, m);
 					while(!bWake && err == kErrNone){
 						err = (m->sleep(&cond) == Mutex::kErrNone)?kErrNone:kErrSome;
+						log("Cond %p and Mutex %p awake\n", this, m);
 					}
+					log("Cond %p and Mutex %p seperated\n", this, m);
 					return err;
 				}
 
 				Error wake(){
+					log("Cond %p waking\n", this);
 					if(0 == pthread_cond_signal(&cond)){
+						log("Cond %p woken\n", this);
 						bWake = true;
 						return kErrNone;
 					}
@@ -938,54 +995,6 @@ namespace kq{
 					return kErrNone;
 				}
 			};
-
-
-			class JobMaker{
-			public:
-				virtual bool getJob(void * (**fn)(void *), void **) = 0;
-			};
-
-			class JobRunner{
-				JobMaker * maker;
-				void work(){
-					void * (*fn)(void *);
-					void * data;
-					while(maker->getJob(&fn, &data)){
-						(*fn)(data);
-					}
-				}
-				Thread::Handle thread;
-				static void threadProc(JobRunner * obj){
-					obj->work();
-				}
-			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-				JobRunner(JobMaker * maker){
-					this->maker = maker;
-				}
-
-				Error initialize(){
-					if(Thread::kErrNone == Thread::create(thread, (void * (*)(void *))threadProc, this)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				Error finalize(){
-					if(Thread::kErrNone == Thread::join(thread, 0)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				~JobRunner(){
-					finalize();
-				}
-			};
-
 		}
 		namespace flows{
 
@@ -1029,7 +1038,7 @@ namespace kq{
 
 			typedef Error (* Processor)(const IPorts *, const Message *);
 
-			class ISocket{
+			class ISocket: virtual public kq::core::debug::Log{
 
 			public:
 				enum Operation{
@@ -1051,109 +1060,40 @@ namespace kq{
 
 			class DHSSocket:public ISocket{
 				kq::core::memory::MemoryWorker & mem;
-				struct Node{
-				public:
-					Operation operation;
-					OperationData * data;
-					kq::core::system::ConditionMutex mx;
-					bool bRun;
-					Error err;
-					Node * next;
-				};
 
-				//Used during init
-				kq::core::system::Mutex mx;
+				kq::core::system::ConditionMutex mx;
 
-				Node * producerfirst;
-				Node * producerlast;
-				Node * consumer;
 
-				kq::core::system::Mutex mxProducer;
-				kq::core::system::Condition cEmpty;
-				void qinit(){
-					producerfirst = 0;
-					producerlast = 0;
-					consumer = 0;
-					mxProducer.initialize();
-					cEmpty.initialize();
-				}
-
-				void qfini(){
-					mxProducer.finalize();
-					cEmpty.finalize();
-				}
-
-				void qproduce(Node * n){
-					{
-						printf("qprod %p\n", producerfirst);
-						n->mx.initialize();
-						n->next = 0;
-						n->bRun = false;
-						kq::core::system::ScopeMutex(&this->mxProducer);
-						if(producerfirst){
-							producerlast->next = n;
-							producerlast = n;
-						}
-						else{
-							producerfirst = producerlast = n;
-							cEmpty.wake();
-						}
-					}
-					{
-						kq::core::system::ScopeMutex(&n->mx);
-						while(!n->bRun){
-							printf("%p sleeping bRun %d\n", n, n->bRun);
-							n->mx.sleep();
-							printf("%p woken bRun %d\n", n, n->bRun);
-						}
-					}
-				}
-
-				//TODO: more than one consumer
-				void qconsume(Node * & n){
-					if(n){
-						kq::core::system::ScopeMutex(&n->mx);
-						n->bRun = true;
-						printf("%p woking bRun %d\n", n, n->bRun);
-						n->mx.wake();
-						n = 0;
-					}
-					if(!consumer){
-						kq::core::system::ScopeMutex(&this->mxProducer);
-						while(!producerfirst && !bShuttingDown){
-							cEmpty.sleep(&mxProducer);
-						}
-						if(!bShuttingDown){
-							consumer = producerfirst;
-							producerfirst = 0;
-							producerlast = 0;
-						}
-					}
-					if(!bShuttingDown){
-						n = consumer;
-						consumer = consumer->next;
-					}
-
-				}
-
+				kq::core::system::Condition cCitizen;
 				kq::core::system::Thread::Handle hCitizen;
 				bool bShuttingDown;
-
+				bool bNewData;
+				Operation operation;
+				OperationData * operationData;
+				Error operationError;
 
 				virtual Error dooperation_citizen(Operation operation, OperationData * data){
-
-					Error err = kErrNone;
+					Error err = kErrOutOfMemory;
+					log("Operation Done\n");
 					return err;
 				}
 
 
 				void citizenwork(){
-					Node * n = 0;
-					qconsume(n);
-					while(n){
-						n->err = dooperation_citizen(n->operation, n->data);
-						qconsume(n);
-					};
+					{
+						kq::core::system::ScopeMutex _0(&this->mx);
+						while(!bShuttingDown){
+							while(!bNewData && !bShuttingDown)
+								cCitizen.sleep(&this->mx);
+							if(bShuttingDown){
+								break;
+							}
+							operationError = dooperation_citizen(operation, operationData);
+							bNewData = false;
+							mx.wake();
+						}
+					}
+					cCitizen.finalize();
 				}
 
 				static void * _citizen_work(void * obj){
@@ -1162,56 +1102,64 @@ namespace kq{
 				}
 
 			public:
-				DHSSocket(kq::core::memory::MemoryWorker & memworker):mem(memworker), producerfirst(0), hCitizen(0){
+				DHSSocket(kq::core::memory::MemoryWorker & memworker):mem(memworker), hCitizen(0){
 					mx.initialize();
+					mx.enableLogging();
+					enableLogging();
+
 				}
 
 				~DHSSocket(){
+					bShuttingDown = true;
 					{
-						kq::core::system::ScopeMutex(&this->mxProducer);
-						bShuttingDown = true;
-						cEmpty.wake();
+						kq::core::system::ScopeMutex _0(&this->mx);
+						cCitizen.wake();
 					}
 					if(hCitizen)kq::core::system::Thread::join(hCitizen, 0);
-					qfini();
 					mx.finalize();
 				}
 
 				virtual Error dooperation(Operation operation, OperationData * data){
 					Error err;
 
-					if(!producerfirst){
-						kq::core::system::ScopeMutex(&this->mx);
-						if(!producerfirst){
-							qinit();
-							if(!hCitizen){
-								bShuttingDown = false;
-								if(kq::core::system::Thread::kErrNone != kq::core::system::Thread::create(hCitizen, &_citizen_work, (void *)this)){
-									//Couldnot start citizen
-									err = kErrDeadEnd;
-									goto done;
-								}
+					if(!hCitizen){
+						kq::core::system::ScopeMutex _0(&this->mx);
 
+						if(!hCitizen){
+							bShuttingDown = false;
+							bNewData = false;
+							cCitizen.initialize();
+							cCitizen.enableLogging();
+							if(kq::core::system::Thread::kErrNone != kq::core::system::Thread::create(hCitizen, &_citizen_work, (void *)this)){
+								//Couldnot start citizen
+								err = kErrDeadEnd;
+								goto done;
 							}
+
 						}
+
 					}
 					{
-						Node n;
-						n.operation = operation;
-						n.data = data;
-						qproduce(&n);
-						err = n.err;
+						kq::core::system::ScopeMutex _0(&this->mx);
+						this->operation = operation;
+						this->operationData = data;
+						bNewData = true;
+						cCitizen.wake();
+						while(bNewData){
+							mx.sleep();
+						}
+						err = operationError;
+
+
 					}
 					done:
+					log("doOperation Err = %u\n", (unsigned int)err);
 					return err;
 				}
 			};
 
 			class SocketData: public IPorts{
 				kq::core::memory::MemoryWorker & mem;
-
-
-
 
 				enum ProcessorState{
 					kStateOff,
@@ -1239,16 +1187,8 @@ namespace kq{
 				Error processOuter(const Message *);
 				Error processInner(const Message *);
 
-
-
 				kq::core::system::Mutex mxConnections;
 				kq::core::data::BPlusTree connections;
-
-				kq::core::system::JobMaker * jobmaker;
-				kq::core::system::JobRunner * jobrunner;
-
-
-
 
 			public:
 				SocketData(kq::core::memory::MemoryWorker &);
@@ -1264,6 +1204,8 @@ namespace kq{
 	}
 }
 
+volatile kq::core::ui32 kq::core::system::Resourcer::ResourceManager::nResourcers = 0;
+kq::core::system::Resourcer::ResourceManager kq::core::system::Resourcer::manager;
 
 using namespace kq;
 using namespace kq::core;
@@ -1287,9 +1229,7 @@ SocketData::SocketData(kq::core::memory::MemoryWorker & memworker):
 		mem(memworker),
 		state(kStateOff),
 		processor(0),
-		connections(memworker, sizeof(Port)),
-		jobmaker(0),
-		jobrunner(0)
+		connections(memworker, sizeof(Port))
 {
 	mxExternalEntry.initialize();
 	mxConnections.initialize();

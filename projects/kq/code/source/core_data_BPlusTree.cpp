@@ -11,14 +11,15 @@ using namespace kq::core::data;
 
 BPlusTree::BPlusTree(kq::core::memory::MemoryWorker & memworker, USmall bytesInKey, USmall bitsPerLevel)
 	:mem(memworker),
+
 	m_nBytesInKey(bytesInKey),
 	m_nBitsPerLevel(bitsPerLevel),
 	m_nChildrenPerNode(1 << bitsPerLevel),
 	m_nNibblesPerByte(8/bitsPerLevel),
 	m_nNibblesInKey(m_nBytesInKey * m_nNibblesPerByte),
+	m_pRoot(0),
 	m_nLevelsInStack(m_nNibblesInKey + 1),
-	m_nSizeOfStack(m_nLevelsInStack * sizeof(void *)),
-	m_pRoot(0)
+	m_nSizeOfStack(m_nLevelsInStack * sizeof(void *))
 {
 
 	//LOGINOUT;
@@ -856,4 +857,5 @@ bool kq::core::data::BPlusTree_test(kq::core::memory::MemoryWorker &mem){
 
 		}
 
+		return false;
 }
