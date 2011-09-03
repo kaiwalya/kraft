@@ -49,14 +49,14 @@ if sSystem == 'Linux':
 	
 
 envEXP = Environment();
-envEXP.VariantDir('exp', 'projects/kq/code/source');
-sExpSources = ['exp/kqExperiments.cpp', envEXP.Glob('exp/core_*.cpp'), 'exp/ui_UserInterface.cpp'];
+envEXP.VariantDir('builds/exp', 'projects/kq/code/source', duplicate=0);
+sExpSources = ['builds/exp/kqExperiments.cpp', envEXP.Glob('builds/exp/core_*.cpp'), 'builds/exp/ui_UserInterface.cpp'];
 if sSystem == 'Linux':
 	sExpSources += ['exp/ui_X_UserInterface.cpp'];
 	envEXP.Append(LIBS = 'X11:GL');
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
-	envEXP.Append(CCFLAGS = '-g -O3');
+	envEXP.Append(CCFLAGS = '-g -Wall');
 	
 envEXP.Program('experiments', sExpSources);
 

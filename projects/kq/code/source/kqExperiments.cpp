@@ -633,7 +633,7 @@ void Links::gridSet(){
 void Links::gridReset(){
 }
 */
-
+/*
 #include "sys/time.h"
 //#include "windows.h"
 
@@ -670,28 +670,12 @@ using namespace kq::ui;
 
 #include "unistd.h"
 #include "setjmp.h"
+*/
 
-class A{
+static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *), void * data) __attribute__((noinline));
+static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *), void * data){
 
-	int i;
-};
-class B: /*virtual*/ public A{
-
-	int j;
-};
-
-class C:/*virtual*/ public A{
-
-};
-
-class D:public B, public C{
-
-};
-
-static void * remoteCall(void * stacklocation, size_t stacksize, void * (*fn)(void *), void * data) __attribute__((noinline));
-static void * remoteCall(void * stacklocation, size_t stacksize, void * (*fn)(void *), void * data){
-
-	//If is optimized at compile time in release
+	//Should be optimized at compile time in release
 	if(sizeof(void *) == sizeof(kq::core::ui64)){
 
 		//Prepare stack
@@ -770,325 +754,515 @@ namespace kq{
 			};
 
 		}
-		namespace flows{
+	}
+}
 
-			typedef kq::core::ui8 Data;
-			//typedef kq::core::ui8 ID;
+#include "pthread.h"
 
-			class IReader{
+namespace kq{
+	namespace core{
+		namespace debug{
+			void assert(bool condition){
+				if(!condition){
+					*(char *)0 = 0;
+				}
+			}
+		}
+		namespace system{
+
+			class Mutex{
+				pthread_mutex_t mutex;
+
 			public:
-				virtual kq::core::memory::Pointer<Data> read() = 0;
-				virtual bool next() = 0;
-			};
-
-			class IWriter{
-			public:
-				virtual bool write(kq::core::memory::Pointer<kq::core::ui8> pData) = 0;
-			};
-
-			class Stream:public IWriter{
-			protected:
-
-				class Message{
-				public:
-					kq::core::memory::Pointer<Message> pNext;
-					kq::core::memory::Pointer<Data> pData;
-
+				enum Error{
+					kErrNone,
+					kErrSome,
 				};
 
-			public:
-				class Reader:public IReader{
-					friend class Stream;
-					kq::core::memory::Pointer<Message> m_pCurrent;
-				public:
-					kq::core::memory::Pointer<Data> read(){
-						return m_pCurrent->pData;
+			protected:
+				Error sleep(pthread_cond_t * cond){
+					if(0 == pthread_cond_wait(cond, &mutex)){
+						return kErrNone;
 					}
+					return kErrSome;
+				}
 
-					bool next(){
-						//printf("Reader %p next entered\n", this);
-						bool bRet = false;
-						if(m_pCurrent->pNext){
-							m_pCurrent = m_pCurrent->pNext;
-							bRet = true;
-						}
-						//printf("Reader %p next leaving\n", this);
-						return bRet;
+				friend class Condition;
+
+			public:
+
+				Error initialize(){
+					if(0 == pthread_mutex_init(&mutex, 0)){
+						return kErrNone;
 					}
+					return kErrSome;
+				}
+
+				void finalize(){
+					pthread_mutex_destroy(&mutex);
+				}
+
+				Error lock(){
+					printf("Locking %p...", this);
+					if(0 == pthread_mutex_lock(&mutex)){
+						printf("Locked\n");
+						return kErrNone;
+					}
+					printf("Error\n");
+					return kErrSome;
+				}
+
+				Error unlock(){
+					printf("Unlocking %p...", this);
+					if(0 == pthread_mutex_unlock(&mutex)){
+						printf("UnLocked\n");
+						return kErrNone;
+					}
+					printf("UnLocked\n");
+					return kErrSome;
+				}
+
+
+			};
+
+			class Condition{
+				pthread_cond_t cond;
+				bool bWake;
+
+			public:
+				enum Error{
+					kErrNone,
+					kErrSome,
 				};
-			protected:
-				kq::core::memory::MemoryWorker &mem;
-				kq::core::memory::Pointer<Message> m_pLast;
+				Error initialize(){
+					Error err = kErrSome;
+					if(0 == pthread_cond_init(&cond, 0)){
+						err = kErrNone;
+						goto done;
+					}
+					done:
+					bWake = false;
+					return err;
+				}
+
+				void finalize(){
+					pthread_cond_destroy(&cond);
+				}
+
+				Error sleep(Mutex * m){
+					Error err = kErrNone;
+					bWake = false;
+					while(!bWake && err == kErrNone){
+						err = (m->sleep(&cond) == Mutex::kErrNone)?kErrNone:kErrSome;
+					}
+					return err;
+				}
+
+				Error wake(){
+					if(0 == pthread_cond_signal(&cond)){
+						bWake = true;
+						return kErrNone;
+					}
+					return kErrSome;
+				}
+
+				//TODO: Is wake all compatible with bWake?
+				Error wakeAll(){
+					if(0 == pthread_cond_broadcast(&cond)){
+						bWake = true;
+						return kErrNone;
+					}
+					return kErrSome;
+				}
+			};
+
+			class ConditionMutex:public Condition,  public Mutex{
+
+
 			public:
-				Stream(kq::core::memory::MemoryWorker &memworker):mem(memworker){
-					m_pLast = kq_core_memory_workerRefCountedClassNew(mem, Message);
-				}
-
-				virtual ~Stream(){}
-
-				virtual bool write(kq::core::memory::Pointer<kq::core::ui8> pData){
-					if(pData){
-						kq::core::memory::Pointer<Message> pMessage = kq_core_memory_workerRefCountedClassNew(this->mem, Message);
-						if(pMessage){
-							pMessage->pData = pData;
-							m_pLast->pNext = pMessage;
-							m_pLast = pMessage;
-							return true;
+				Condition::Error initialize(){
+					Condition::Error err = Condition::kErrSome;
+					if(Condition::kErrNone == Condition::initialize()){
+						if(Mutex::kErrNone == Mutex::initialize()){
+							err = Condition::kErrNone;
+							goto done;
 						}
+						Condition::finalize();
 					}
-					return false;
+					done:
+					return err;
 				}
 
-			protected:
-				virtual kq::core::memory::Pointer<Reader> createReader(){
-					kq::core::memory::Pointer<Reader> pRet;
-					pRet = (kq_core_memory_workerRefCountedClassNew(mem, Reader));
-					if(pRet){
-						pRet->m_pCurrent = m_pLast;
-					}
-					return pRet;
+				void finalize(){
+					Mutex::finalize();
+					Condition::finalize();
 				}
 
-			};
-
-			class Board;
-			struct BootInfo{
-				void * bootparam;
-				Board * board;
-			};
-			typedef void (*Processor)(BootInfo * info);
-			typedef ui32 PinID;
-			typedef ui32 SocketID;
-
-			struct Pin{
-				const SocketID sockid;
-				const PinID pinid;
-				Pin(SocketID s, PinID p):sockid(s), pinid(p){}
-				bool operator >>(Pin dest){
-					return false;
+				Condition::Error sleep(){
+					return Condition::sleep(this);
 				}
 			};
 
-			struct Socket{
+			class ScopeMutex{
+				Mutex * mutex;
 			public:
-				const SocketID id;
-				Socket(SocketID sockid = 0):id(sockid){};
-				Pin operator [] (PinID pid){return Pin(id, pid);}
-
+				ScopeMutex(Mutex * mutex){this->mutex = mutex;mutex->lock();}
+				~ScopeMutex(){mutex->unlock();}
 			};
 
-			class Board{
-
-				class BoardState{
-
-					struct ProcessorInfo{
-
-						enum ProcessorState{
-							sNotReady, //Bad state
-							sReady,	//Can be scheduled and will run.
-							sRunning, //Currently running
-							sWaiting, //Paused for event
-							sDone, //Finished executing proc
-							sDead, //Finished or error
-						};
-
-						//Valid always
-						ProcessorState state;
-
-						//Valid from sReady <= state
-						Processor proc;
-						void * bootparam;
-						SocketID sockid;
-						BoardState * boardstate;
-
-						//Valid from sReady <= state <= sDone
-						void * stacklocation;
-						size_t stacksize;
-						jmp_buf * context[2];
-					};
-
-					kq::core::memory::MemoryWorker & mem;
-					Board * board;
-					friend class Board;
-					kq::core::data::IDMap map;
-
-					void run(ProcessorInfo * info){
-						int iRet = setjmp(*info->context[1]);
-						if(iRet == 0){
-							longjmp(*info->context[0], 1);
-						}
-						else{
-							//state Should be sDone here.
-
-							info->state = ProcessorInfo::sDead;
-							mem(info->context[0], 0);
-							mem(info->context[1], 0);
-
-							//You better not be on this stack
-							mem(info->stacklocation, 0);
-						}
-					}
-
-					void harness(ProcessorInfo * info){
-
-						int iRet = setjmp(*info->context[0]);
-						if(iRet == 0){
-							//this path returns
-							info->state = ProcessorInfo::sReady;
-						}
-						else{
-							info->state = ProcessorInfo::sRunning;
-
-							//Dont have any hopes of returning from here
-							{
-								volatile register void ** bp asm("rbp");
-								*bp = 0;
-							}
-							BootInfo bootinfo;
-							bootinfo.board = this->board;
-							bootinfo.bootparam = info->bootparam;
-							info->proc(&bootinfo);
-							info->state = ProcessorInfo::sDone;
-							longjmp(*info->context[1], 1);
-						}
-					}
-					static void * _harness(void * data){
-						ProcessorInfo * info = (ProcessorInfo *)data;
-						info->boardstate->harness(info);
-						return 0;
-					}
-
-					void finalizeProcessorInfo(ProcessorInfo * pInfo){
-						printf("BoardState(%p)::finalizeProcessorInfo(%u)\n", this, pInfo->sockid);
-						run(pInfo);
-						mem(pInfo, 0);
-					}
-				public:
-					BoardState(kq::core::memory::MemoryWorker & memworker):mem(memworker), map(memworker){
-						printf("BoardState(%p)::BoardState()\n", this);
-					}
-
-					~BoardState(){
-						kq::core::data::BPlusTree::Path p = map.getIterator();
-						ProcessorInfo * pInfo;
-						if(p.init_first((void **)&(pInfo))){
-							do{
-								finalizeProcessorInfo(pInfo);
-							}while(p.next((void **)&(pInfo)));
-						}
-						printf("BoardState(%p)::~BoardState()\n", this);
-					}
-
-					Socket attach(Processor proc, void * pBootParam){
-						SocketID ret = 0;
-						const size_t stacksize = 1024;
-
-						size_t sz[] = {sizeof(ProcessorInfo), stacksize, sizeof(jmp_buf), sizeof(jmp_buf)};
-						const int n = sizeof(sz)/sizeof(sz[0]);
-						void * ptr[n];
-						int i = 0;
-						while(i < n){
-							ptr[i] = mem(0, sz[i]);
-							if(!ptr[i]){
-								break;
-							}
-							i++;
-						}
-						if(i == n){
-
-							ProcessorInfo * info = (ProcessorInfo *)ptr[0];
-							info->state = ProcessorInfo::sNotReady;
-							info->proc = proc;
-							info->bootparam = pBootParam;
-							info->sockid = (SocketID)(map.create(info));
-							ret = info->sockid;
-							info->stacklocation = ptr[1];
-							info->stacksize = stacksize;
-							info->context[0] = (jmp_buf *)ptr[2];
-							info->context[1] = (jmp_buf *)ptr[3];
-							info->boardstate = this;
-							remoteCall(info->stacklocation, info->stacksize, _harness, info);
-
-						}
-						else{
-
-							while(i){
-								i--;
-								mem(ptr[i], 0);
-							}
-						}
-
-						return Socket(ret);
-					}
+			class Thread{
+			public:
+				enum Error{
+					kErrNone,
+					kErrSome,
 				};
 
-				BoardState * state;
-
-				static Board * gRoot;
-				static Board * findBoard(){
-					Board * ret = 0;
-
-					if(!ret) ret = gRoot;
+				typedef pthread_t Handle;
+				static Error create(Handle & t, void * (*fn)(void *), void * data){
+					Error ret = kErrSome;
+					if(0 == pthread_create(&t, 0, fn, data)){
+						ret = kErrNone;
+					}
 					return ret;
 				}
 
-				static BoardState * findState(){
-					Board * board = findBoard();
-					if(board){
-						return board->state;
+				static Error join(Handle &thread, void ** returnval){
+					if(0 == pthread_join(thread, returnval)){
+						return kErrNone;
 					}
+					return kErrSome;
+				}
+
+				static Error attach(Handle &thread){
+					thread = pthread_self();
+					return kErrNone;
+				}
+			};
+
+
+			class JobMaker{
+			public:
+				virtual bool getJob(void * (**fn)(void *), void **) = 0;
+			};
+
+			class JobRunner{
+				JobMaker * maker;
+				void work(){
+					void * (*fn)(void *);
+					void * data;
+					while(maker->getJob(&fn, &data)){
+						(*fn)(data);
+					}
+				}
+				Thread::Handle thread;
+				static void threadProc(JobRunner * obj){
+					obj->work();
+				}
+			public:
+				enum Error{
+					kErrNone,
+					kErrSome,
+				};
+				JobRunner(JobMaker * maker){
+					this->maker = maker;
+				}
+
+				Error initialize(){
+					if(Thread::kErrNone == Thread::create(thread, (void * (*)(void *))threadProc, this)){
+						return kErrNone;
+					}
+					return kErrSome;
+				}
+
+				Error finalize(){
+					if(Thread::kErrNone == Thread::join(thread, 0)){
+						return kErrNone;
+					}
+					return kErrSome;
+				}
+
+				~JobRunner(){
+					finalize();
+				}
+			};
+
+		}
+		namespace flows{
+
+			enum Error{
+				kErrNone,
+				kErrPowerOnOff,
+				kErrBusy,
+				kErrDeadEnd,
+				kErrUnexpectedState,
+				kErrOutOfMemory,
+			};
+
+
+			class IData{
+			protected:
+				virtual IData * clone();
+				virtual void finalize();
+			};
+
+			typedef kq::core::ui32 Port;
+			typedef kq::core::ui32 DataCount;
+			enum Direction{
+				kDirectionIn,
+				kDirectionOut,
+			};
+
+			struct Message{
+				Port port;
+				Direction direction;
+				IData ** arrData;
+				DataCount min;
+				DataCount max;
+				void set(Port port, Direction d, IData ** arrData, DataCount min, DataCount max);
+			};
+
+			class IPorts{
+			public:
+				virtual Error prefetch(Port iPort, DataCount nData) = 0;
+				virtual Error performIO(Message *) = 0;
+			};
+
+			typedef Error (* Processor)(const IPorts *, const Message *);
+
+			class ISocket{
+
+			public:
+				enum Operation{
+					kSocketNone,
+					kSocketCreate,
+					kSocketInsertProcessor,
+					kSocketEjectProcessor,
+					kSocketConnect,
+					kSocketPrefetch,
+					kSocketPerformIO,
+					kSocketDestroy,
+				};
+
+				struct OperationData{};
+				struct OperationCreate:public OperationData{kq::core::memory::MemoryWorker * mem;};
+				struct OperationInserProcessor:public OperationData{};
+
+			};
+
+			class DHSSocket:public ISocket{
+				kq::core::memory::MemoryWorker & mem;
+				struct Node{
+				public:
+					Operation operation;
+					OperationData * data;
+					kq::core::system::ConditionMutex mx;
+					bool bRun;
+					Error err;
+					Node * next;
+				};
+
+				//Used during init
+				kq::core::system::Mutex mx;
+
+				Node * producerfirst;
+				Node * producerlast;
+				Node * consumer;
+
+				kq::core::system::Mutex mxProducer;
+				kq::core::system::Condition cEmpty;
+				void qinit(){
+					producerfirst = 0;
+					producerlast = 0;
+					consumer = 0;
+					mxProducer.initialize();
+					cEmpty.initialize();
+				}
+
+				void qfini(){
+					mxProducer.finalize();
+					cEmpty.finalize();
+				}
+
+				void qproduce(Node * n){
+					{
+						printf("qprod %p\n", producerfirst);
+						n->mx.initialize();
+						n->next = 0;
+						n->bRun = false;
+						kq::core::system::ScopeMutex(&this->mxProducer);
+						if(producerfirst){
+							producerlast->next = n;
+							producerlast = n;
+						}
+						else{
+							producerfirst = producerlast = n;
+							cEmpty.wake();
+						}
+					}
+					{
+						kq::core::system::ScopeMutex(&n->mx);
+						while(!n->bRun){
+							printf("%p sleeping bRun %d\n", n, n->bRun);
+							n->mx.sleep();
+							printf("%p woken bRun %d\n", n, n->bRun);
+						}
+					}
+				}
+
+				//TODO: more than one consumer
+				void qconsume(Node * & n){
+					if(n){
+						kq::core::system::ScopeMutex(&n->mx);
+						n->bRun = true;
+						printf("%p woking bRun %d\n", n, n->bRun);
+						n->mx.wake();
+						n = 0;
+					}
+					if(!consumer){
+						kq::core::system::ScopeMutex(&this->mxProducer);
+						while(!producerfirst && !bShuttingDown){
+							cEmpty.sleep(&mxProducer);
+						}
+						if(!bShuttingDown){
+							consumer = producerfirst;
+							producerfirst = 0;
+							producerlast = 0;
+						}
+					}
+					if(!bShuttingDown){
+						n = consumer;
+						consumer = consumer->next;
+					}
+
+				}
+
+				kq::core::system::Thread::Handle hCitizen;
+				bool bShuttingDown;
+
+
+				virtual Error dooperation_citizen(Operation operation, OperationData * data){
+
+					Error err = kErrNone;
+					return err;
+				}
+
+
+				void citizenwork(){
+					Node * n = 0;
+					qconsume(n);
+					while(n){
+						n->err = dooperation_citizen(n->operation, n->data);
+						qconsume(n);
+					};
+				}
+
+				static void * _citizen_work(void * obj){
+					((DHSSocket *)obj)->citizenwork();
 					return 0;
 				}
 
 			public:
-				Board():state(0){
-					printf("Board(%p)::Board()\n", this);
+				DHSSocket(kq::core::memory::MemoryWorker & memworker):mem(memworker), producerfirst(0), hCitizen(0){
+					mx.initialize();
 				}
 
-				~Board(){
-					printf("Board(%p)::~Board()\n", this);
+				~DHSSocket(){
+					{
+						kq::core::system::ScopeMutex(&this->mxProducer);
+						bShuttingDown = true;
+						cEmpty.wake();
+					}
+					if(hCitizen)kq::core::system::Thread::join(hCitizen, 0);
+					qfini();
+					mx.finalize();
 				}
-				static bool initialize(kq::core::memory::MemoryWorker & memworker){
-					Board * board = findBoard();
-					if(board){
-						if(!board->state){
-							board->state = (BoardState *)memworker(0, sizeof(BoardState));
-							if(board->state){
-								new (board->state) BoardState(memworker);
-								board->state->board = board;
-								return true;
+
+				virtual Error dooperation(Operation operation, OperationData * data){
+					Error err;
+
+					if(!producerfirst){
+						kq::core::system::ScopeMutex(&this->mx);
+						if(!producerfirst){
+							qinit();
+							if(!hCitizen){
+								bShuttingDown = false;
+								if(kq::core::system::Thread::kErrNone != kq::core::system::Thread::create(hCitizen, &_citizen_work, (void *)this)){
+									//Couldnot start citizen
+									err = kErrDeadEnd;
+									goto done;
+								}
+
 							}
 						}
 					}
-					return false;
-				}
-
-				static bool finalize(){
-					Board * board = findBoard();
-					if(board){
-						if(board->state){
-							kq::core::memory::MemoryWorker & mem = board->state->mem;
-							board->state->~BoardState();
-							mem(board->state, 0);
-							return true;
-						}
+					{
+						Node n;
+						n.operation = operation;
+						n.data = data;
+						qproduce(&n);
+						err = n.err;
 					}
-					return false;
+					done:
+					return err;
 				}
+			};
 
-				static Socket attach(Processor proc, void * pBootParam = 0){
-					BoardState * s = findState();
-					if(s) return s->attach(proc, pBootParam);
-					return Socket();
-				}
+			class SocketData: public IPorts{
+				kq::core::memory::MemoryWorker & mem;
+
+
+
+
+				enum ProcessorState{
+					kStateOff,
+					kStateOn,
+					kStateBusy,
+				};
+				ProcessorState state;
+
+				Processor processor;
+				void * stackstart;
+				size_t stacksize;
+				kq::core::system::Mutex mxExternalEntry;
+
+				class IPortsProcessor: public IPorts{
+					SocketData * socketdata;
+					friend class SocketData;
+				public:
+					virtual Error prefetch(Port iPort, DataCount nData);
+					virtual Error performIO(Message *);
+
+				};
+
+				IPortsProcessor processorports;
+
+				Error processOuter(const Message *);
+				Error processInner(const Message *);
+
+
+
+				kq::core::system::Mutex mxConnections;
+				kq::core::data::BPlusTree connections;
+
+				kq::core::system::JobMaker * jobmaker;
+				kq::core::system::JobRunner * jobrunner;
+
+
+
+
+			public:
+				SocketData(kq::core::memory::MemoryWorker &);
+				~SocketData();
+				Error ejectProcessor();
+				Error insertProcessor(Processor p);
+				virtual Error prefetch(Port iPort, DataCount nData);
+				virtual Error performIO(Message *);
+				Error connect(Port iPort, SocketData * other, Port iOther);
 
 			};
 		}
 	}
 }
-
-static kq::core::flows::Board rootboard;
-kq::core::flows::Board * kq::core::flows::Board::gRoot = &rootboard;
 
 
 using namespace kq;
@@ -1097,29 +1271,234 @@ using namespace kq::core::memory;
 using namespace kq::core::data;
 using namespace kq::core::flows;
 
-void producer(BootInfo * pInfo){
-	MemoryWorker & mem = *(MemoryWorker *)pInfo->bootparam;
-	if(Board::initialize(mem)){
-		printf("In producer\n");
-		printf("Out producer\n");
-		Board::finalize();
-	}
+IData * IData::clone() {return 0;}
+void IData::finalize(){}
+
+void Message::set(Port port, Direction d, IData ** arrData, DataCount min, DataCount max)
+{
+	this->port = port;
+	this->arrData = arrData;
+	this->min = min;
+	this->max = max;
+	this->direction = d;
 }
 
-void consumer(BootInfo * pInfo){
-	MemoryWorker & mem = *(MemoryWorker *)pInfo->bootparam;
-	if(Board::initialize(mem)){
-		printf("In consumer\n");
-		printf("Out consumer\n");
-		Board::finalize();
+SocketData::SocketData(kq::core::memory::MemoryWorker & memworker):
+		mem(memworker),
+		state(kStateOff),
+		processor(0),
+		connections(memworker, sizeof(Port)),
+		jobmaker(0),
+		jobrunner(0)
+{
+	mxExternalEntry.initialize();
+	mxConnections.initialize();
+	processorports.socketdata = this;
+}
+
+SocketData::~SocketData(){
+	ejectProcessor();
+}
+
+struct ProcessParcel{
+	SocketData * s;
+	Error (SocketData::*f)(const Message *);
+	Error e;
+	const Message * m;
+};
+
+Error SocketData::processInner(const Message * m){
+	return (*processor)(&processorports, m);
+}
+
+void processparceltransfer(ProcessParcel * p){
+	//ProcessParcel * p = (ProcessParcel *) v;
+	p->e = (p->s->*p->f)(p->m);
+}
+
+Error SocketData::processOuter(const Message * m){
+	ProcessParcel p;
+	p.s = this;
+	p.f = &SocketData::processInner;
+	p.e = kErrNone;
+	p.m = m;
+
+	remoteCall(stackstart, stacksize, (void (*)(void *))processparceltransfer, &p);
+	return p.e;
+}
+
+Error SocketData::ejectProcessor(){
+	Error err;
+	mxExternalEntry.lock();
+	if(state != kStateOff){
+		Message m;
+		m.set(0, kDirectionIn, 0, 0, 0);
+		if(processOuter(&m) == kErrNone){
+			state = kStateOff;
+			mem(stackstart, 0);
+			err = kErrNone;
+		}
+		else{
+			err = kErrPowerOnOff;
+		}
 	}
+	if(state == kStateOff){
+		processor = 0;
+		err = kErrNone;
+	}
+	mxExternalEntry.unlock();
+
+	return err;
+}
+
+Error SocketData::insertProcessor(Processor p){
+	Error err;
+	if(kErrNone == ejectProcessor()){
+		processor = p;
+	}
+	return err;
+}
+
+Error SocketData::prefetch(Port iPort, DataCount nData){
+	return kErrNone;
+}
+
+Error SocketData::performIO(Message * m){
+	Port & i = m->port;
+
+	Error err = kErrNone;
+	//Port 0 is not open to public
+	if(i == 0){
+		err = kErrDeadEnd;
+	}
+	else{
+		kq::core::system::ScopeMutex enter(&mxExternalEntry);
+		//Check if the processor has booted
+		if(state == kStateOff){
+			stacksize = 4096;
+			stackstart = mem(0, stacksize);
+			if(stackstart){
+				Message m;
+				m.set(0, kDirectionIn, 0, 0, 1);
+				err = processOuter(&m);
+				if(err == kErrNone){
+					state = kStateOn;
+				}
+				else{
+					err = kErrPowerOnOff;
+				}
+			}
+			else{
+				err = kErrOutOfMemory;
+			}
+		}
+
+		if(state == kStateOn){
+			state = kStateBusy;
+			err = processOuter(m);
+			state = kStateOn;
+		}
+	}
+
+	return err;
+}
+
+Error SocketData::IPortsProcessor::prefetch(Port iPort, DataCount nData){
+	return kErrNone;
+}
+Error SocketData::IPortsProcessor::performIO(Message * m){
+	return kErrUnexpectedState;
+}
+
+Error SocketData::connect(Port iPort, SocketData * other, Port iOther){
+	if(iPort == 0 || iOther == 0){
+		return kErrDeadEnd;
+	}
+
+	//this should be > other, to avoid dead locks
+	if(this < other){
+		return other->connect(iOther, this, iPort);
+	}
+
+	Error err;
+	//first make a broad division, make or break?
+	if(other){
+		//connect/reconnect
+		kq::core::data::BPlusTree::Path p(&connections);
+
+	}
+	else{
+		//disconnect
+
+	}
+
+	return err;
+
 }
 
 
 
+/*
+class TestProcessor:public Processor{
+
+public:
+	TestProcessor(){
+
+	}
+
+	~TestProcessor(){
+
+	}
+
+	struct Return:public IData{
+		int ret;
+	};
+
+	int entry(){
+
+		Return r;
+		IData * pr = &r;
+		Flow f;
+		f.set(1, 1, 1, &pr);
+		if(doFlow(&f) == kErrNone){
+			return r.ret;
+		}
+		return -1;
+	}
+protected:
+	virtual Error handleFlow(const Flow * flow){
+		printf("FlowIndex %u Data %p\n", (unsigned int)flow->fid, flow->data);
+		return kErrNone;
+	}
+
+
+};
+
+*/
+
+Error consumer(const IPorts * ports, const Message * msg){
+	printf("Consumer %p %p[%u %p %u %u]\n", ports, msg, (ui32)msg->port, msg->arrData, (ui32)msg->min, (ui32)msg->max);
+	Error err;
+	switch(msg->port){
+	case 0:
+		err = kErrNone;
+		break;
+	case 1:
+	default:
+		err = kErrDeadEnd;
+	}
+	return err;
+}
+
+Error producer(const IPorts * ports, const Message * msg){
+	printf("Producer %p %p[%u %p %u %u]\n", ports, msg, (ui32)msg->port, msg->arrData, (ui32)msg->min, (ui32)msg->max);
+	return kErrNone;
+
+}
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
+	int ret;
 
 	//Create std allocator
 	StandardLibraryMemoryAllocator allocStd;
@@ -1132,16 +1511,29 @@ int main(int /*argc*/, char ** /*argv*/){
 		//allocPool.getMemoryWorker(mem);
 		{
 
-			if(Board::initialize(mem)){
-				Socket p = Board::attach(&producer);
-				Socket c = Board::attach(&consumer);
 
-				if(p.id && c.id){
-					if(p[0] >> c[0]){
-						printf("Link Successful\n");
-					}
-				}
-				Board::finalize();
+			/*
+			TestProcessor p;
+			ret = p.entry();
+			*/
+
+			/*
+			flows::SocketData p(mem);
+			flows::SocketData c(mem);
+			p.insertProcessor(producer);
+			c.insertProcessor(consumer);
+			p.connect(1, &c, 1);
+			Message m;
+			m.set(1, kDirectionOut, 0, 0, 0);
+			c.performIO(&m);
+			*/
+
+			flows::DHSSocket dhs(mem);
+			flows::Error err = kErrNone;
+			{
+				DHSSocket::OperationCreate o;
+				o.mem = &mem;
+				err = dhs.dooperation(DHSSocket::kSocketCreate, &o);
 			}
 
 		}
@@ -1149,7 +1541,7 @@ int main(int /*argc*/, char ** /*argv*/){
 
 
 
-	return 0;
+	return ret;
 }
 
 

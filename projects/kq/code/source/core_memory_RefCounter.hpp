@@ -40,7 +40,7 @@ public:
 		delete [] tabs;
 	}
 
-	LogInOut(const void * ptr, const char * pFunction):m_pFunction(pFunction), m_pThis(ptr){
+	LogInOut(const void * ptr, const char * pFunction):m_pThis(ptr), m_pFunction(pFunction) {
 
 		log(true);
 		iDepth++;
