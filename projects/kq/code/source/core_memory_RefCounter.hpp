@@ -173,9 +173,9 @@ namespace kq{
 				#define kq_declare_function_taking_constreference(name) kq_declare_template name (const RefHolder<type0, up0, down0> & o)
 				#define kq_overload_bool_operator(op) kq_declare_function_taking_constreference(bool operator op) const{return ((p()) op (o.p()));}
 			protected:
-				type * t;
 				RefCounter * c;
 				PtrOffset i;
+				type * t;
 
 				void switchCounter(RefCounter * oc, PtrOffset oi){
 					//printf("Switching counters\n");

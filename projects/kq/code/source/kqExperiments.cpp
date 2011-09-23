@@ -33,301 +33,11 @@ static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *
 
 }
 
+
+/*
 namespace kq{
 	namespace core{
-		namespace data{
-			class IDMap{
-				memory::MemoryWorker & mem;
-				BPlusTree tree;
-				typedef ui32 IDVal;
-				IDVal m_iNext;
-				IDVal m_nAlive;
-			public:
-				IDMap(memory::MemoryWorker & memworker)
-				:mem(memworker), tree(memworker, sizeof(IDVal)), m_iNext(1), m_nAlive(0){}
 
-				~IDMap(){}
-
-				IDVal getAliveIDCount(){return m_nAlive;}
-
-				template<typename t> IDVal create(t * p){
-					IDVal ret = 0;
-					if(tree.map(&(m_iNext), p)){
-						ret = m_iNext;
-						m_nAlive++;
-						m_iNext++;
-					}
-					return ret;
-				}
-
-				template<typename t> t * get(const IDVal id){
-					t * ret = 0;
-					if(id && id < m_iNext){
-						ret = tree.lookup(&id);
-					}
-					return ret;
-				}
-
-				template<typename t> t * destroy(const IDVal id){
-					t * ret = 0;
-					if(id && id < m_iNext){
-						if(tree.map(&id, 0, (void **)&ret)){
-							m_nAlive--;
-						}
-					}
-					return ret;
-				}
-
-			public:
-				kq::core::data::BPlusTree::Path getIterator(){
-					return kq::core::data::BPlusTree::Path(&tree);
-				}
-
-			};
-
-		}
-	}
-}
-
-#include "pthread.h"
-
-#include "stdarg.h"
-#include "assert.h"
-
-namespace kq{
-	namespace core{
-		namespace debug{
-			void assume(kq::core::ui32 iVal, ...){
-				assert(iVal);
-			}
-
-			class Log{
-				bool bLogging;
-			public:
-				Log(){bLogging = false;}
-				virtual void enableLogging(){bLogging = true;}
-				virtual void disableLogging(){bLogging = false;}
-				void log(const char * format, ...){
-					va_list args;
-					va_start (args, format);
-					if(bLogging)
-						vprintf (format, args);
-					va_end (args);
-				}
-			};
-		}
-
-		namespace system{
-
-			class Resourcer{
-
-			public:
-				typedef kq::core::ui32 ResourceCount;
-
-				class ResourceManager:virtual kq::core::debug::Log{
-					volatile static kq::core::ui32 nResourcers;
-				public:
-					ResourceManager(){enableLogging();}
-					~ResourceManager(){
-						log("%d resourcers leaked\n", nResourcers);
-					}
-					void operator+=(ResourceCount c){
-						nResourcers+=c;
-					}
-					void operator-=(ResourceCount c){
-						nResourcers-=c;
-					}
-				};
-
-				static ResourceManager manager;
-				kq::core::ui32 nResources;
-			public:
-				Resourcer():nResources(0){}
-				~Resourcer(){kq::core::debug::assume(!nResources);}
-				void initialize(int iCount = 1){manager+=iCount;nResources+=iCount;}
-				void finalize(int iCount = 1){manager-=iCount;nResources-=iCount;}
-			};
-
-			class Mutex: virtual public kq::core::debug::Log, private Resourcer{
-				pthread_mutex_t mutex;
-
-			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-
-			protected:
-				Error sleep(pthread_cond_t * cond){
-					if(0 == pthread_cond_wait(cond, &mutex)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				friend class Condition;
-
-			public:
-
-				Error initialize(){
-					if(0 == pthread_mutex_init(&mutex, 0)){
-						Resourcer::initialize();
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				void finalize(){
-					Resourcer::finalize();
-					pthread_mutex_destroy(&mutex);
-				}
-
-				Error lock(){
-					log("[%p]Lock %p...", pthread_self(), this);
-					if(0 == pthread_mutex_lock(&mutex)){
-						log("Locked\n");
-						Resourcer::initialize();
-						return kErrNone;
-					}
-					printf("Lock Error\n");
-					return kErrSome;
-				}
-
-				Error unlock(){
-					log("[%p]Lock %p...", pthread_self(), this);
-					if(0 == pthread_mutex_unlock(&mutex)){
-						log("UnLocked\n");
-						Resourcer::finalize();
-						return kErrNone;
-					}
-					log("UnLock Error\n");
-					return kErrSome;
-				}
-
-
-			};
-
-			class Condition: virtual public kq::core::debug::Log, private Resourcer{
-				pthread_cond_t cond;
-				bool bWake;
-
-			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-				Error initialize(){
-					Error err = kErrSome;
-					if(0 == pthread_cond_init(&cond, 0)){
-						err = kErrNone;
-						Resourcer::initialize();
-						goto done;
-					}
-					done:
-					bWake = false;
-					return err;
-				}
-
-				void finalize(){
-					Resourcer::finalize();
-					pthread_cond_destroy(&cond);
-				}
-
-				Error sleep(Mutex * m){
-					Error err = kErrNone;
-					bWake = false;
-					log("Cond %p and Mutex %p sleeping\n", this, m);
-					while(!bWake && err == kErrNone){
-						err = (m->sleep(&cond) == Mutex::kErrNone)?kErrNone:kErrSome;
-						log("Cond %p and Mutex %p awake\n", this, m);
-					}
-					log("Cond %p and Mutex %p seperated\n", this, m);
-					return err;
-				}
-
-				Error wake(){
-					log("Cond %p waking\n", this);
-					if(0 == pthread_cond_signal(&cond)){
-						log("Cond %p woken\n", this);
-						bWake = true;
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				//TODO: Is wake all compatible with bWake?
-				Error wakeAll(){
-					if(0 == pthread_cond_broadcast(&cond)){
-						bWake = true;
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-			};
-
-			class ConditionMutex:public Condition,  public Mutex{
-
-
-			public:
-				Condition::Error initialize(){
-					Condition::Error err = Condition::kErrSome;
-					if(Condition::kErrNone == Condition::initialize()){
-						if(Mutex::kErrNone == Mutex::initialize()){
-							err = Condition::kErrNone;
-							goto done;
-						}
-						Condition::finalize();
-					}
-					done:
-					return err;
-				}
-
-				void finalize(){
-					Mutex::finalize();
-					Condition::finalize();
-				}
-
-				Condition::Error sleep(){
-					return Condition::sleep(this);
-				}
-			};
-
-			class ScopeMutex{
-				Mutex * mutex;
-			public:
-				ScopeMutex(Mutex * mutex){this->mutex = mutex;mutex->lock();}
-				~ScopeMutex(){mutex->unlock();}
-			};
-
-			class Thread{
-			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-
-				typedef pthread_t Handle;
-				static Error create(Handle & t, void * (*fn)(void *), void * data){
-					Error ret = kErrSome;
-					if(0 == pthread_create(&t, 0, fn, data)){
-						ret = kErrNone;
-					}
-					return ret;
-				}
-
-				static Error join(Handle &thread, void ** returnval){
-					if(0 == pthread_join(thread, returnval)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				static Error attach(Handle &thread){
-					thread = pthread_self();
-					return kErrNone;
-				}
-			};
-		}
 		namespace flows{
 
 			enum Error{
@@ -708,6 +418,7 @@ Error SocketData::connect(Port iPort, SocketData * other, Port iOther){
 
 }
 
+*/
 
 
 /*
@@ -747,7 +458,7 @@ protected:
 };
 
 */
-
+/*
 Error consumer(const IPorts * ports, const Message * msg){
 	printf("Consumer %p %p[%u %p %u %u]\n", ports, msg, (ui32)msg->port, msg->arrData, (ui32)msg->min, (ui32)msg->max);
 	Error err;
@@ -767,19 +478,100 @@ Error producer(const IPorts * ports, const Message * msg){
 	return kErrNone;
 
 }
+*/
+
+
+namespace kq{
+	namespace core{
+		namespace flow{
+
+			enum Error{
+
+			};
+
+			class IRefCounter{
+			public:
+				virtual void add(){};
+				virtual void release(){};
+			};
+
+			struct ProcessorType{
+				typedef kq::core::ui32 Length;
+				typedef unsigned char * Localtion;
+				Localtion location;
+				Length length;
+			};
+
+			typedef kq::core::ui32 PortNumber;
+			typedef kq::core::ui32 BufferLength;
+
+
+			class IProcessor:public IRefCounter{
+			public:
+				struct Message{
+
+				};
+
+				virtual Error perform(Message *) = 0;
+			};
+
+			class IConnection:public IRefCounter{
+				Error recommendBufferLength(BufferLength len);
+			};
+
+			class ISocket:public IRefCounter{
+			public:
+				virtual Error createConnection(PortNumber, ISocket * pSocket, PortNumber);
+			};
+
+			class IAssemblyLine: public IRefCounter{
+			public:
+				virtual Error createProcessor(IProcessor **);
+			};
+
+			class IFactory: public IRefCounter{
+			public:
+				virtual Error createAssemblyLine(ProcessorType *, IAssemblyLine **);
+			};
+
+			class IFlowSessionClient{
+			public:
+				virtual Error createLocalFactory(IFactory **);
+				virtual Error createAssemblyLine(IAssemblyLine **);
+			};
+
+			class IFlowSessionServer: public IRefCounter{
+			public:
+				virtual Error createSocket(ProcessorType *, ISocket **);
+			};
+
+			class FlowSessionFactory{
+			public:
+				Error createFlowSession(IFlowSessionClient *, IFlowSessionServer **);
+			};
+		}
+	}
+}
+
+using namespace kq::core::flow;
+
+class FlowClient:public IFlowSessionClient{
+
+};
+
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
 	int ret;
 
 	//Create std allocator
-	StandardLibraryMemoryAllocator allocStd;
-	MemoryWorker memStd;
+	kq::core::memory::StandardLibraryMemoryAllocator allocStd;
+	kq::core::memory::MemoryWorker memStd;
 	allocStd.getMemoryWorker(memStd);
 
 	{
-		MemoryWorker mem = memStd;
-		//PooledMemoryAllocator allocPool(memStd);
+		kq::core::memory::MemoryWorker mem = memStd;
+		//kq::core::memory::PooledMemoryAllocator allocPool(memStd);
 		//allocPool.getMemoryWorker(mem);
 		{
 
@@ -800,6 +592,7 @@ int main(int /*argc*/, char ** /*argv*/){
 			c.performIO(&m);
 			*/
 
+			/*
 			flows::DHSSocket dhs(mem);
 			flows::Error err = kErrNone;
 			{
@@ -807,11 +600,19 @@ int main(int /*argc*/, char ** /*argv*/){
 				o.mem = &mem;
 				err = dhs.dooperation(DHSSocket::kSocketCreate, &o);
 			}
+			*/
+
+			/*
+			FlowSessionFactory f;
+			IFlowServer * pFlowServer;
+			FlowClient flowClient;
+			f.createFlowSession(&flowClient, &pFlowServer);
+			*/
+
+
 
 		}
 	}
-
-
 
 	return ret;
 }
