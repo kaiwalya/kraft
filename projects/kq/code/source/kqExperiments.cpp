@@ -1,9 +1,12 @@
 #include "core.hpp"
 
+/*
 #include "stdio.h"
 #include "stdlib.h"
 #include "memory.h"
+*/
 
+/*
 static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *), void * data) __attribute__((noinline));
 static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *), void * data){
 
@@ -32,6 +35,8 @@ static void remoteCall(void * stacklocation, size_t stacksize, void (*fn)(void *
 	}
 
 }
+
+*/
 
 
 /*
@@ -481,84 +486,16 @@ Error producer(const IPorts * ports, const Message * msg){
 */
 
 
-namespace kq{
-	namespace core{
-		namespace flow{
-
-			enum Error{
-
-			};
-
-			class IRefCounter{
-			public:
-				virtual void add(){};
-				virtual void release(){};
-			};
-
-			struct ProcessorType{
-				typedef kq::core::ui32 Length;
-				typedef unsigned char * Localtion;
-				Localtion location;
-				Length length;
-			};
-
-			typedef kq::core::ui32 PortNumber;
-			typedef kq::core::ui32 BufferLength;
-
-
-			class IProcessor:public IRefCounter{
-			public:
-				struct Message{
-
-				};
-
-				virtual Error perform(Message *) = 0;
-			};
-
-			class IConnection:public IRefCounter{
-				Error recommendBufferLength(BufferLength len);
-			};
-
-			class ISocket:public IRefCounter{
-			public:
-				virtual Error createConnection(PortNumber, ISocket * pSocket, PortNumber);
-			};
-
-			class IAssemblyLine: public IRefCounter{
-			public:
-				virtual Error createProcessor(IProcessor **);
-			};
-
-			class IFactory: public IRefCounter{
-			public:
-				virtual Error createAssemblyLine(ProcessorType *, IAssemblyLine **);
-			};
-
-			class IFlowSessionClient{
-			public:
-				virtual Error createLocalFactory(IFactory **);
-				virtual Error createAssemblyLine(IAssemblyLine **);
-			};
-
-			class IFlowSessionServer: public IRefCounter{
-			public:
-				virtual Error createSocket(ProcessorType *, ISocket **);
-			};
-
-			class FlowSessionFactory{
-			public:
-				Error createFlowSession(IFlowSessionClient *, IFlowSessionServer **);
-			};
-		}
-	}
-}
+using namespace kq;
+using namespace kq::core;
+using namespace kq::core::memory;
 
 using namespace kq::core::flow;
 
-class FlowClient:public IFlowSessionClient{
+class FlowSessionClient:public IFlowSessionClient{
+public:
 
 };
-
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -602,8 +539,39 @@ int main(int /*argc*/, char ** /*argv*/){
 			}
 			*/
 
+			{
+				Pointer<IFlowSessionServer> pServer;
+				{
+					Pointer<IFlowSession> pSession;
+					IFlowSession::FlowsSessionInitOptions o;
+					o.mem = &mem;
+					o.pClient = kq_core_memory_workerRefCountedClassNew(mem, FlowSessionClient);
+
+					if(IFlowSession::createFlowSession(&o, pSession) == kErrNone){
+						pServer = pSession->getServer();
+					}
+				}
+				const unsigned char sProcessor_RandomNumberGenerator[] = "Random_Number_Generator";
+				const unsigned char sProcessor_RandomNumberSink[] = "Random_Number_Sink";
+				ProcessorType type;
+				type.location = sProcessor_RandomNumberGenerator;
+				type.length = sizeof(sProcessor_RandomNumberGenerator);
+				if(pServer){
+					Pointer<ISocket> pSource;
+					if(kErrNone == pServer->createSocket(&type, pSource)){
+						Pointer<ISocket> pDest;
+						type.location = sProcessor_RandomNumberSink;
+						type.length = sizeof(sProcessor_RandomNumberSink);
+						if(kErrNone == pServer->createSocket(&type, pDest)){
+							Pointer<IConnection> pConnection;
+							if(kErrNone == pSource->createConnection(1, pDest, 1)){
+								pConnection->recommendBufferLength(100);
+							}
+						}
+					}
+				}
+			}
 			/*
-			FlowSessionFactory f;
 			IFlowServer * pFlowServer;
 			FlowClient flowClient;
 			f.createFlowSession(&flowClient, &pFlowServer);
