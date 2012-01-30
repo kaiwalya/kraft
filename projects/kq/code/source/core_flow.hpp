@@ -6,6 +6,114 @@
 
 namespace kq{
 	namespace core{
+		namespace flows2{
+			enum FlowsError{
+				kErrNone,
+			}
+			typedef void * FlowsConnection;
+			FlowsError flows_connect_local(FlowsConnection *);
+			FlowsError flows_
+		}
+#if defined(HAS_FLOWTRONICS)
+		namespace flowtronics{
+			
+			enum FlowtronicsError{
+				kError_AllOk,
+				kError_NotEnoughMemory,
+				kError_NotImplemented,
+			};
+
+			struct FlowtronicsAPI;
+			struct ProcessorServerAPI;
+			struct ProcessorClientAPI;
+
+			//struct ProcessorTypeServerAPI;
+			struct ProcessorTypeClientAPI;
+
+			struct Name{
+				const kq::core::ui8 * location;
+				const kq::core::ui32 size;
+			};
+			
+			typedef kq::core::ui32 Port;
+			
+			struct CreateProcessorContext{
+				Name factoryName;
+				Name processorTypeName;
+				Name ProcessorName;
+				
+				ProcessorClientAPI * processorClientAPI;
+				void * processorClient;
+				
+				ProcessorServerAPI * processorServerAPI;
+				void * processorServer;
+			};
+			
+			struct FactoryRegistration{
+				enum Format{
+					kFactoryRegistration_Format_LocalFactory,
+					kFactoryRegitration_Format_SharedLibrary,
+				};
+				
+				Name factoryName;
+				
+				struct LocalFactory{
+					FlowtronicsError (*(*findFactory)(Name factoryName))(CreateProcessorContext *);
+				};
+				
+				struct SharedLibraryFactory{
+					
+					enum Arch{
+						kFactoryRegistration_SharedLibraryFactory_Arch_unknown,
+					};
+					
+					enum Arch arch;
+					const char * filename;
+					const char * findFactoryFunctionName;
+					
+				};
+				
+				union{
+					LocalFactory localFactory;
+					SharedLibraryFactory soFactory;
+				};
+			};
+			
+			
+			struct ProcessorServerAPI{
+				FlowtronicsError (*requestHalt)();
+				FlowtronicsError (*requestRegisterFactory)(void * processor, FactoryRegistration *);
+				FlowtronicsError (*requestCreateProcessor)(void * processor, CreateProcessorContext * c);
+				FlowtronicsError (*requestLink)(void * processor, Port thisport, void * processorOther, Port otherport);
+				FlowtronicsError (*requestReadFrom)(Port p);
+				FlowtronicsError (*requestWriteTo)(Port p);
+			};
+			
+			struct ProcessorClientAPI{
+				//The first client API call to be called
+				FlowtronicsError (*onPowerUp)(void * obj);
+				
+				//Called when ever an exception occurs
+				FlowtronicsError (*onException)(void * obj);
+				
+				//Called when someone dispatched a read/write requiest
+				FlowtronicsError (*onDataRequest)(void * obj);
+				
+				//Last Client api to be called
+				FlowtronicsError (*onPowerDown)(void * obj);
+				
+			};
+			
+		
+			struct FlowtronicsAPI{
+				FlowtronicsError (*createRootProcessor)(CreateProcessorContext * c);
+			};
+			
+			bool getFlowtronicsAPI(FlowtronicsAPI *);
+			
+		};
+#endif
+#if define (HAS_FLOWSV1)		
 		namespace flow{
 
 			enum FlowError{
@@ -78,6 +186,7 @@ namespace kq{
 				static FlowError createFlowSession(FlowsSessionInitOptions *, kq::core::memory::Pointer<IFlowSession> &);
 			};
 		}
+#endif
 	}
 }
 
