@@ -4,15 +4,17 @@
 #include "core_IntegerTypes.hpp"
 #include "core_memory_RefCounter.hpp"
 
+#define HAS_FLOWTRONICS
+#define HAS_FLOWSV1
+
 namespace kq{
 	namespace core{
 		namespace flows2{
 			enum FlowsError{
 				kErrNone,
-			}
+			};
 			typedef void * FlowsConnection;
 			FlowsError flows_connect_local(FlowsConnection *);
-			FlowsError flows_
 		}
 #if defined(HAS_FLOWTRONICS)
 		namespace flowtronics{
@@ -113,7 +115,7 @@ namespace kq{
 			
 		};
 #endif
-#if define (HAS_FLOWSV1)		
+#if defined (HAS_FLOWSV1)		
 		namespace flow{
 
 			enum FlowError{
