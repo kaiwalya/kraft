@@ -39,7 +39,7 @@ if sSystem == 'Linux':
 	envWin.Replace(CXX = 'i586-mingw32msvc-g++')
 	
 	envKlarity = envWin.Clone();
-	envKlarity.VariantDir('klr', 'projects/kq/code/source');
+	envKlarity.VariantDir('klr', 'projects/kq/code/cxx');
 	envKlarity.Append(LIBS = 'winmm');
 	envKlarity.Program('klarity', ['klr/kqKlarity.cpp', envKlarity.Glob('klr/core_*.cpp')]);
 	
@@ -49,14 +49,30 @@ if sSystem == 'Linux':
 	
 
 envEXP = Environment();
-envEXP.VariantDir('builds/exp', 'projects/kq/code/source', duplicate=0);
-sExpSources = ['builds/exp/kqExperiments.cpp', envEXP.Glob('builds/exp/core_*.cpp'), 'builds/exp/ui_UserInterface.cpp'];
+envEXP.VariantDir('builds/experiments_', 'projects/kq/code/cxx', duplicate=0);
+sExpSources = ['builds/experiments_/kqExperiments.cpp', envEXP.Glob('builds/experiments_/core_*.cpp'), 'builds/experiments_/ui_UserInterface.cpp'];
 if sSystem == 'Linux':
-	sExpSources += ['exp/ui_X_UserInterface.cpp'];
+	sExpSources += ['builds/experiments_/ui_X_UserInterface.cpp'];
 	envEXP.Append(LIBS = 'X11:GL');
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
 	envEXP.Append(CCFLAGS = '-g -Wall');
 	
 envEXP.Program('builds/experiments', sExpSources);
+
+sJavaOutDir = 'builds/classes'
+envEXP['JARCHDIR']= sJavaOutDir;
+envEXP.Java(sJavaOutDir, 'projects/kq/code/java/');
+
+sKQStockClasses = Split("""
+	builds/classes/kq/Portfolio$$SymbolInfo.class
+	builds/classes/kq/Portfolio.class
+	builds/classes/kq/Stock.class
+	builds/classes/kq/web/Base64Coder.class
+	builds/classes/kq/web/IHTTPResourceCache.class
+	builds/classes/kq/web/ZipHttpResourceCache.class
+	""");
+
+envEXP.Jar('builds/kq.Stock.jar',sKQStockClasses);
+
 
