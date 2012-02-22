@@ -58,5 +58,5 @@ elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
 	envEXP.Append(CCFLAGS = '-g -Wall');
 	
-envEXP.Program('experiments', sExpSources);
+envEXP.Program('builds/experiments', sExpSources);
 
