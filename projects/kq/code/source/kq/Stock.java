@@ -29,8 +29,8 @@ public class Stock {
 		float totalnsp = 0;
 		float totalnspm = 0;
 		Iterator<Portfolio.SymbolInfo> it = pf.getIterator();
-		System.out.println("SYM\tCost\tCurrent\tMax");
-		System.out.println("------------------------------------------");
+		//System.out.println("SYM\tCost\tCurrent\tMax");
+		//System.out.println("------------------------------------------");
 		while(it.hasNext()){
 			Portfolio.SymbolInfo si = it.next();
 			//System.out.println("Analysing: " + si.symbolName + " bought on " + si.dateOfPurchase.getTime());
@@ -47,22 +47,39 @@ public class Stock {
 			suri += ("&f=" + today.get(Calendar.YEAR));
 			suri += "&g=d&ignore=.csv";
 			
+			//Current price
+			//http://download.finance.yahoo.com/d/quotes.csv?s=DFS&f=sl1d1t1c1ohgv&e=.csv
+			String suri_latest = "http://download.finance.yahoo.com/d/quotes.csv?s="+ si.symbolName + "&f=sl1d1t1c1ohgv&e=.csv";
+			
 			URI uri = null;
+			URI uri_latest = null;
 			
 			try{
 				uri = new URI(suri);
+				uri_latest = new URI(suri_latest);
 			}
 			catch(Exception e){
 				e.printStackTrace();
 			}
 			
-			if(uri != null){
+			if(uri != null && uri_latest != null){
+				float fCurr = -1;
+				String sCurrentDate = null;
+				{
+					try{
+						String [] currentData = (new BufferedReader(new InputStreamReader(cache.getResource(uri_latest, "")))).readLine().split(",");
+						fCurr = Float.parseFloat(currentData[1]);
+						String [] currentDate = currentData[2].replaceAll("\"", "").split("/");
+						sCurrentDate = "" + currentDate[2] + "-" + currentDate[0] + "-" + currentDate[1];
+					}
+					catch(Exception E){
+						E.printStackTrace();
+					}
+				}
 				InputStream is = cache.getResource(uri, null);
 				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 				String line = null;
-				float fCurr, fMax;
-				fCurr = -1;
-				String sCurrentDate = null;
+				float fMax;
 				fMax = -1;
 				String sMaxDate = null;
 				try {
@@ -70,8 +87,8 @@ public class Stock {
 					line = br.readLine(); //Read first record to get the current price
 					if(line != null){
 						String [] data = line.split(",");
-						fCurr = Float.parseFloat(data[4]);
-						sCurrentDate = data[0];
+						//fCurr = Float.parseFloat(data[4]);
+						//sCurrentDate = data[0];
 						fMax = Float.parseFloat(data[2]);
 						sMaxDate = data[0];
 						while((line = br.readLine()) != null){
@@ -117,7 +134,7 @@ public class Stock {
 					
 					//loss since max
 					float whatif_loss = nspm - nsp;
-					float whatif_loss_percent = 100.0f * whatif_loss / nspm;
+					float whatif_loss_percent = 100.0f * whatif_loss / (nspm - ncp);
 					
 					String [] maxdateelements = sMaxDate.split("-");
 					GregorianCalendar maxdate = new GregorianCalendar(
@@ -139,12 +156,12 @@ public class Stock {
 					//System.out.format("\t%.2f,%.2f$", cp, ncp);
 					//System.out.format("\t%.2f,%.2f$[%.2f,%.2f$,%.2f]", sp, nsp, sp-cp, nsp-ncp, 100*(nsp-ncp)/ncp);
 					//System.out.format("\t%.2f,%.2f$[%.2f,%.2f$,%.2f]", spm, nspm, spm-cp, nspm-ncp, 100*(nspm-ncp)/ncp);
-					System.out.format(" lost [%.2f, %.2f%%] in %d days", whatif_loss, whatif_loss_percent, (int)dayssincemax);
+					System.out.format(" profits fell by [%.2f$, %.2f%%] in %d days", whatif_loss, whatif_loss_percent, (int)dayssincemax);
 					
 					if(sp >= cp)
-						System.out.format(" with [%.2f, %.2f%%] gain", np, pp);
+						System.out.format(" with [%.2f$, %.2f%%] gain", np, pp);
 					else
-						System.out.format(" with [%.2f, %.2f%%] loss", -np, -pp);
+						System.out.format(" with [%.2f$, %.2f%%] loss", -np, -pp);
 					
 					
 					System.out.println();
