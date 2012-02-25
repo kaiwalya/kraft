@@ -73,6 +73,19 @@ sKQStockClasses = Split("""
 	builds/classes/kq/web/ZipHttpResourceCache.class
 	""");
 
+sKQFlowsDaemonClasses = Split("""
+	builds/classes/kq/flows/daemon/Daemon.class
+	builds/classes/kq/flows/daemon/ControlPanel.class
+	builds/classes/kq/flows/daemon/ControlPanel$$1.class
+	builds/classes/kq/flows/daemon/ControlPanel$$2.class
+	builds/classes/kq/flows/daemon/ControlPanel$$3.class
+	builds/classes/kq/flows/daemon/ControlPanel$$ParametrizedCallable.class
+	builds/classes/kq/flows/daemon/ControlPanel$$MainFrame.class
+	builds/classes/kq/flows/daemon/Configuration.class
+	builds/classes/kq/net/NetworkManager.class
+	""");
+
 envEXP.Jar('builds/kq.Stock.jar',sKQStockClasses);
+envEXP.Jar('builds/kq.flows.Daemon.jar',sKQFlowsDaemonClasses);
 
 

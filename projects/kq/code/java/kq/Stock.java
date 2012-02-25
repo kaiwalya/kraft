@@ -130,7 +130,7 @@ public class Stock {
 					
 					//profit percent
 					float pp = 100.0f * np / ncp;
-					float ppm = 100.0f * npm / ncp;
+					//float ppm = 100.0f * npm / ncp;
 					
 					//loss since max
 					float whatif_loss = nspm - nsp;
@@ -167,7 +167,6 @@ public class Stock {
 					System.out.println();
 					//System.out.format("\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n", );
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
