@@ -1,5 +1,7 @@
 package kq.flows.daemon;
 
+import kq.flows.daemon.controlpanel.ControlPanel;
+
 class Daemon{
 	
 	class DaemonWorker implements Runnable{

@@ -2,10 +2,14 @@ package kq.flows.daemon;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
 import java.util.Properties;
 
+import kq.flows.daemon.controlpanel.ControlPanel;
 
-class Configuration{
+
+public class Configuration{
 	
 	
 	private Properties propertiesGlobal;
@@ -44,12 +48,11 @@ class Configuration{
 			File configDirectory = new File(homeDirectory, ".kq");
 			//If config directory doesnt exist create one
 			if(configDirectory.exists() || (homeDirectory.canWrite() && configDirectory.mkdir())){
-				String namespaceString = ControlPanel.class.getName();
+				String namespaceString = Daemon.class.getName();
 				namespaceString = namespaceString.substring(0, namespaceString.lastIndexOf("."));
 				File daemonConfig = new File(configDirectory, namespaceString);			
 				if((daemonConfig.exists() || daemonConfig.createNewFile()) && daemonConfig.canRead() && daemonConfig.canWrite()){
 					//System.out.println("Trying Config File: " + daemonConfig.getAbsolutePath());
-
 					configFile = daemonConfig;
 					FileInputStream daemonConfigFileInputStream = new FileInputStream(configFile);
 					Properties local = new Properties();
@@ -76,7 +79,7 @@ class Configuration{
 		return globalCP;
 	}
 	
-	String getUserDirectory(){
+	String getGlobalUserDirectory(){
 		return globalUserDir;
 	}	
 	

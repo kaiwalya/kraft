@@ -126,7 +126,7 @@ public class Stock {
 					
 					//profit
 					float np = nsp - ncp;
-					float npm = nspm - ncp;
+					//float npm = nspm - ncp;
 					
 					//profit percent
 					float pp = 100.0f * np / ncp;

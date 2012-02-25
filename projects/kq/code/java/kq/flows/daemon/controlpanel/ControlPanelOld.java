@@ -1,15 +1,12 @@
-package kq.flows.daemon;
+package kq.flows.daemon.controlpanel;
 
 
 import java.io.File;
 import java.util.concurrent.*;
-
-import javax.swing.*;
-
 import kq.net.NetworkManager;
 
 
-public class ControlPanel {
+public class ControlPanelOld {
 	
 	public static void main(String[] args) {
 		String homeDirectoryString = System.getProperty("user.home");
@@ -19,13 +16,13 @@ public class ControlPanel {
 			File configDirectory = new File(homeDirectory, ".kq");
 			//If config directory doesnt exist create one
 			if(configDirectory.exists() || (homeDirectory.canWrite() && configDirectory.mkdir())){
-				String namespaceString = ControlPanel.class.getName();
+				String namespaceString = ControlPanelOld.class.getName();
 				namespaceString = namespaceString.substring(0, namespaceString.lastIndexOf("."));
 				File daemonConfig = new File(configDirectory, namespaceString);
 				try{
 					if((daemonConfig.exists() || daemonConfig.createNewFile()) && daemonConfig.canRead() && daemonConfig.canWrite()){
 						System.out.println("Config File: " + daemonConfig.getAbsolutePath());
-						new ControlPanel(daemonConfig);
+						new ControlPanelOld(daemonConfig);
 					}
 				}
 				catch(Exception e){
@@ -53,38 +50,17 @@ public class ControlPanel {
 			return call(in);
 		}
 	};
-	
-	private class MainFrame extends JFrame{
-		ControlPanel cpl;
-		MainFrame(ControlPanel cpl){
-			super("Daemon Control Panel");
-			this.cpl = cpl;
-			setSize(640, 480);
-			
-			JPanel panel = new JPanel();
-			
-			panel.add(new JButton("Quit"));
-			
-			getContentPane().add(panel);
-			setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-			
-		}
-		
-		
-	}
 
 
 	private kq.net.NetworkManager networkManager;
-	private MainFrame mainFrame;
 	
-	
-	protected ControlPanel(File configFile){
+	protected ControlPanelOld(File configFile){
 		try{
 			ExecutorService async = Executors.newCachedThreadPool();
 			
-			Future<NetworkManager> networkManagerFuture = async.submit(new ParametrizedCallable<NetworkManager, ControlPanel>(this) {
+			Future<NetworkManager> networkManagerFuture = async.submit(new ParametrizedCallable<NetworkManager, ControlPanelOld>(this) {
 				@Override
-				public NetworkManager call(ControlPanel in) {
+				public NetworkManager call(ControlPanelOld in) {
 					try{
 						return kq.net.NetworkManager.getInstance();
 					}
@@ -95,23 +71,14 @@ public class ControlPanel {
 				}
 			});
 			
-			Future<MainFrame> mainFrameFuture = async.submit(new ParametrizedCallable<MainFrame, ControlPanel>(this){
-				@Override
-				public MainFrame call(ControlPanel in) {
-					MainFrame f = new MainFrame(in);
-					return f;
-				}
-			});
+			
 			
 			networkManager = networkManagerFuture.get();
-			mainFrame = mainFrameFuture.get();
+			
 			async.shutdown();
 			if(networkManager == null){
 				throw new Exception("Something went wrong");
 			}
-			
-			mainFrame.setVisible(true);
-			
 			
 		}
 		catch(Exception e){

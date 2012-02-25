@@ -73,16 +73,33 @@ sKQStockClasses = Split("""
 	builds/classes/kq/web/ZipHttpResourceCache.class
 	""");
 
+#find builds/classes/kq -type f | sed 's_\$_\$\$_'
 sKQFlowsDaemonClasses = Split("""
-	builds/classes/kq/flows/daemon/Daemon.class
-	builds/classes/kq/flows/daemon/ControlPanel.class
-	builds/classes/kq/flows/daemon/ControlPanel$$1.class
-	builds/classes/kq/flows/daemon/ControlPanel$$2.class
-	builds/classes/kq/flows/daemon/ControlPanel$$3.class
-	builds/classes/kq/flows/daemon/ControlPanel$$ParametrizedCallable.class
-	builds/classes/kq/flows/daemon/ControlPanel$$MainFrame.class
 	builds/classes/kq/flows/daemon/Configuration.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$1.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$2.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$MainFrame.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$ParametrizedCallable.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanel.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$1.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$2.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$MainFrame.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$ParametrizedCallable.class
+	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld.class
+	builds/classes/kq/flows/daemon/controlpanel/panels/BasePanel.class
+	builds/classes/kq/flows/daemon/controlpanel/panels/Configuration$$1.class
+	builds/classes/kq/flows/daemon/controlpanel/panels/Configuration.class
+	builds/classes/kq/flows/daemon/controlpanel/panels/DaemonStatus.class
+	builds/classes/kq/flows/daemon/controlpanel/panels/NetworkAddress.class
+	builds/classes/kq/flows/daemon/controlpanel/treenodes/BaseTreeNode.class
+	builds/classes/kq/flows/daemon/controlpanel/treenodes/Configuration.class
+	builds/classes/kq/flows/daemon/controlpanel/treenodes/DaemonStatus.class
+	builds/classes/kq/flows/daemon/controlpanel/treenodes/NetworkAddress$$Type.class
+	builds/classes/kq/flows/daemon/controlpanel/treenodes/NetworkAddress.class
+	builds/classes/kq/flows/daemon/Daemon$$DaemonWorker.class
+	builds/classes/kq/flows/daemon/Daemon.class
 	builds/classes/kq/net/NetworkManager.class
+
 	""");
 
 envEXP.Jar('builds/kq.Stock.jar',sKQStockClasses);
