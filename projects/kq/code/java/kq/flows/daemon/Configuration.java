@@ -2,11 +2,10 @@ package kq.flows.daemon;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
+import java.io.FileOutputStream;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.Properties;
-
-import kq.flows.daemon.controlpanel.ControlPanel;
 
 
 public class Configuration{
@@ -22,9 +21,14 @@ public class Configuration{
 	private String globalUserDir;
 	
 	
+	private File defaultConfigFile;
 	private File configFile;
 	private Properties propertiesLocal;
+	
 	private static final String keyLocalLastUpdate = "Last Update";
+	private static final String keyLocalNetworkUsage = "NetworkUsage";
+	
+	private boolean hasPendingChange;
 	
 
 	public Configuration(String [] arrParams) throws Exception{
@@ -35,52 +39,139 @@ public class Configuration{
 		globalPWD = propertiesGlobal.getProperty(keyGlobalPWD);
 		globalCP = propertiesGlobal.getProperty(keyGlobalCP);
 		globalUserDir = propertiesGlobal.getProperty(keyGlobalUserDir);
-		propertiesLocal = null;
+		propertiesLocal = new Properties();
+		configFile = null;
+		hasPendingChange = false;
+		defaultConfigFile = null;
+		defaultConfigFile = getDefaultConfigFile(false);
+		
 	}
 	
-	
-	boolean loadLocalConfig() throws Exception{
-		boolean ret = false;
-		String homeDirectoryString = globalUserDir;
-		//System.out.println("Home Directory: " + homeDirectoryString);
-		File homeDirectory = new File(homeDirectoryString);
-		if(homeDirectory.exists() && homeDirectory.isDirectory() && homeDirectory.canRead()){
-			File configDirectory = new File(homeDirectory, ".kq");
-			//If config directory doesnt exist create one
-			if(configDirectory.exists() || (homeDirectory.canWrite() && configDirectory.mkdir())){
-				String namespaceString = Daemon.class.getName();
-				namespaceString = namespaceString.substring(0, namespaceString.lastIndexOf("."));
-				File daemonConfig = new File(configDirectory, namespaceString);			
-				if((daemonConfig.exists() || daemonConfig.createNewFile()) && daemonConfig.canRead() && daemonConfig.canWrite()){
-					//System.out.println("Trying Config File: " + daemonConfig.getAbsolutePath());
-					configFile = daemonConfig;
-					FileInputStream daemonConfigFileInputStream = new FileInputStream(configFile);
-					Properties local = new Properties();
-					local.load(daemonConfigFileInputStream);
-					daemonConfigFileInputStream.close();
-					
-					if(local.containsKey(keyLocalLastUpdate)){
-						propertiesLocal = local;
-						return true;
+	public File getDefaultConfigFile(boolean bCreate) throws Exception{
+		if(defaultConfigFile != null && !bCreate){
+			return defaultConfigFile;
+		}
+		
+		if(bCreate){
+			String homeDirectoryString = globalUserDir;
+			File homeDirectory = new File(homeDirectoryString);
+			if(homeDirectory.exists() && homeDirectory.isDirectory() && homeDirectory.canRead()){
+				File configDirectory = new File(homeDirectory, ".kq");
+				if(configDirectory.exists() || (homeDirectory.canWrite() && configDirectory.mkdir())){
+					String namespaceString = Daemon.class.getName();
+					namespaceString = namespaceString.substring(0, namespaceString.lastIndexOf("."));
+					File daemonConfig = new File(configDirectory, namespaceString);			
+					if((daemonConfig.exists() || daemonConfig.createNewFile()) && daemonConfig.canRead() && daemonConfig.canWrite()){
+						return daemonConfig;
 					}
 				}
 			}
 		}
-
-		return ret;
+		/*
+		else{
+			String homeDirectoryString = globalUserDir;
+			File homeDirectory = new File(homeDirectoryString);
+			if(homeDirectory.exists() && homeDirectory.isDirectory() && homeDirectory.canRead()){
+				File configDirectory = new File(homeDirectory, ".kq");
+				if(configDirectory.exists()){
+					String namespaceString = Daemon.class.getName();
+					namespaceString = namespaceString.substring(0, namespaceString.lastIndexOf("."));
+					File daemonConfig = new File(configDirectory, namespaceString);			
+					if(daemonConfig.exists() && daemonConfig.canRead() && daemonConfig.canWrite()){
+						return daemonConfig;
+					}
+				}
+			}
+		}
+		*/
+		
+		return
+				new File(
+						new File(globalUserDir, ".kq"),
+						Daemon.class.getName().substring(0,  Daemon.class.getName().lastIndexOf("."))
+						)
+		;
+		
 	}
 	
 	
-	String getGlobalWorkingDirectory(){
+	public boolean saveConfigToCurrentFile() throws Exception{
+		if(hadUnsavedChanges()){
+			File fileToSave = configFile;
+			if(configFile == null){
+				fileToSave = getDefaultConfigFile(true);
+			}
+			else{
+				fileToSave = configFile;
+			}
+			
+			if(fileToSave != null){
+				FileOutputStream daemonConfigFileOutputStream = new FileOutputStream(fileToSave);
+				propertiesLocal.setProperty(keyLocalLastUpdate, DateFormat.getDateTimeInstance().format(new Date()));
+				propertiesLocal.store(daemonConfigFileOutputStream, "No Comment!");
+				daemonConfigFileOutputStream.close();
+				configFile = fileToSave;
+				
+			}
+		}
+		
+		return false;
+	}
+	
+
+	public boolean loadConfigFromSpecificFile(File daemonConfig) throws Exception{
+		if(!daemonConfig.exists()) return false;
+		FileInputStream daemonConfigFileInputStream = new FileInputStream(daemonConfig);
+		Properties local = new Properties();
+		local.load(daemonConfigFileInputStream);
+		daemonConfigFileInputStream.close();
+		propertiesLocal = local;
+		configFile = daemonConfig;
+		return true;
+	}
+	
+	public boolean loadConfigFromDefaultFile() throws Exception{
+		return loadConfigFromSpecificFile(getDefaultConfigFile(false));
+	}
+	
+	public boolean hadUnsavedChanges(){
+		return hasPendingChange;
+	}
+	
+	public String getGlobalWorkingDirectory(){
 		return globalPWD;
 	}
 	
-	String getGlobalClassPath(){
+	public String getGlobalClassPath(){
 		return globalCP;
 	}
 	
-	String getGlobalUserDirectory(){
+	public String getGlobalUserDirectory(){
 		return globalUserDir;
 	}	
+	
+	
+	public void changeNetworkUsage(boolean bNetworkUsage){
+		String s1 = bNetworkUsage?"true":"false";
+		if(!(propertiesLocal.containsKey(keyLocalNetworkUsage) && propertiesLocal.getProperty(keyLocalNetworkUsage).equals(s1))){
+			propertiesLocal.setProperty(keyLocalNetworkUsage, s1);
+			hasPendingChange = true;
+		}
+	}
+	
+	public boolean getLocalNetworkUsage(){
+		return propertiesLocal.containsKey(keyLocalNetworkUsage)?propertiesLocal.getProperty(keyLocalNetworkUsage).equals("true"): false;
+	}
+	
+	public String getCurrentConfigFilePath(){
+		try{
+			if(configFile != null) return configFile.getCanonicalPath();
+			if(defaultConfigFile != null) return defaultConfigFile.getCanonicalPath();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
 	
 }

@@ -28,32 +28,32 @@ public class NetworkAddress extends BaseTreeNode {
 		//Get child interfaces
 		{
 			List<NetworkInterface> networkAddresses = new ArrayList<NetworkInterface>();
-			NetworkManager networkManager = NetworkManager.getInstance();
-			networkManager.appendCurrentChildInterfaces(iface, networkAddresses);
+			//NetworkManager networkManager = NetworkManager.getInstance(4784);
+			NetworkManager.appendCurrentChildInterfaces(iface, networkAddresses);
 			for(NetworkInterface addr : networkAddresses){
-				if(!addr.isLoopback()) insert(new NetworkAddress(addr), 0);
+				if(!addr.isLoopback()) insert(new NetworkAddress(getConfiguration(), addr), 0);
 			}
 		}
 		
 		//Get addresses
 		if(iface != null){
 			List<InterfaceAddress> networkAddresses = new ArrayList<InterfaceAddress>();
-			NetworkManager networkManager = NetworkManager.getInstance();
-			networkManager.appendCurrentAddresses(iface, networkAddresses);
+			//NetworkManager networkManager = NetworkManager.getInstance(4784);
+			NetworkManager.appendCurrentAddresses(iface, networkAddresses);
 			for(InterfaceAddress addr : networkAddresses){
-				insert(new NetworkAddress(addr), 0);
+				insert(new NetworkAddress(getConfiguration(), addr), 0);
 			}
 		}	
 	}
 	
-	private NetworkAddress(InterfaceAddress addr) throws Exception{
-		super(addr.getAddress().getHostAddress());
+	private NetworkAddress(kq.flows.daemon.Configuration config, InterfaceAddress addr) throws Exception{
+		super(config, addr.getAddress().getHostAddress());
 		type = Type.typeAddress;
 		this.addr = addr;
 	}
 	
-	private NetworkAddress(NetworkInterface iface) throws Exception{
-		super(iface.getDisplayName());
+	private NetworkAddress(kq.flows.daemon.Configuration config, NetworkInterface iface) throws Exception{
+		super(config, iface.getDisplayName());
 		type = Type.typeIFace;
 		this.iface = iface;
 		
@@ -63,15 +63,19 @@ public class NetworkAddress extends BaseTreeNode {
 	/**
 	 * Create the panel.
 	 */
-	public NetworkAddress() throws Exception{
-		super("Network Addresses");
+	public NetworkAddress(kq.flows.daemon.Configuration config) throws Exception{
+		super(config, "Network Addresses");
 		type = Type.typeRoot;
 		
-		populateChildren(null);
+		//populateChildren(null);
 	}
 	
 	@Override
 	public JPanel getOptionsPanel() {
 		return new kq.flows.daemon.controlpanel.panels.NetworkAddress(this);
+	}
+	
+	public void changeUsage(boolean bUse){
+		getConfiguration().changeNetworkUsage(bUse);
 	}
 }

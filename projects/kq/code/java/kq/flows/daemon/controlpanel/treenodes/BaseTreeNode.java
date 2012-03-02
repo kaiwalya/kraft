@@ -9,15 +9,18 @@ import javax.swing.tree.TreeNode;
 
 public class BaseTreeNode implements MutableTreeNode {
 	private DefaultMutableTreeNode treeNode;
+	private kq.flows.daemon.Configuration config;
 	static private JPanel emptyPanel;
 
 	/**
 	 * Create the panel.
 	 */
-	public BaseTreeNode(String sRootName) {
+	public BaseTreeNode(kq.flows.daemon.Configuration config, String sRootName) {
 		if(emptyPanel == null){
 			emptyPanel = new JPanel();
 		}
+		
+		this.config = config;
 		treeNode = new DefaultMutableTreeNode(sRootName);
 	}
 
@@ -94,6 +97,10 @@ public class BaseTreeNode implements MutableTreeNode {
 	
 	public JPanel getOptionsPanel(){
 		return emptyPanel;
+	}
+	
+	public kq.flows.daemon.Configuration getConfiguration(){
+		return config;
 	}
 
 	public String toString(){

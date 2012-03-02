@@ -10,7 +10,6 @@ import javax.swing.event.*;
 import javax.swing.tree.*;
 
 import kq.flows.daemon.*;
-import java.awt.Dimension;
 
 
 public class ControlPanel implements TreeSelectionListener {
@@ -60,11 +59,11 @@ public class ControlPanel implements TreeSelectionListener {
 
 			DefaultMutableTreeNode root = new DefaultMutableTreeNode();
 			lblTask.setText("Initializing Daemon Status...");
-			root.add(new kq.flows.daemon.controlpanel.treenodes.DaemonStatus());
+			root.add(new kq.flows.daemon.controlpanel.treenodes.DaemonStatus(configuration));
 			lblTask.setText("Initializing Configurations");
-			root.add(new kq.flows.daemon.controlpanel.treenodes.Configuration());
+			root.add(new kq.flows.daemon.controlpanel.treenodes.Configuration(configuration));
 			lblTask.setText("Initializing Network");
-			root.add(new kq.flows.daemon.controlpanel.treenodes.NetworkAddress());
+			root.add(new kq.flows.daemon.controlpanel.treenodes.NetworkAddress(configuration));
 			tree.setModel(new DefaultTreeModel(root));
 			for(int i = 0; i < tree.getRowCount(); i++){
 				tree.expandRow(i);

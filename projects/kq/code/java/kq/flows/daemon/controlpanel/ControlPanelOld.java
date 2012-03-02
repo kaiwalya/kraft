@@ -51,34 +51,19 @@ public class ControlPanelOld {
 		}
 	};
 
-
-	private kq.net.NetworkManager networkManager;
 	
 	protected ControlPanelOld(File configFile){
 		try{
+			/*
 			ExecutorService async = Executors.newCachedThreadPool();
 			
-			Future<NetworkManager> networkManagerFuture = async.submit(new ParametrizedCallable<NetworkManager, ControlPanelOld>(this) {
-				@Override
-				public NetworkManager call(ControlPanelOld in) {
-					try{
-						return kq.net.NetworkManager.getInstance();
-					}
-					catch(Exception e){
-						e.printStackTrace();
-					}
-					return null;
-				}
-			});
-			
-			
-			
-			networkManager = networkManagerFuture.get();
 			
 			async.shutdown();
+			
 			if(networkManager == null){
 				throw new Exception("Something went wrong");
 			}
+			*/
 			
 		}
 		catch(Exception e){

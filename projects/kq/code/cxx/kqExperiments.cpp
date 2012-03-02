@@ -485,6 +485,68 @@ Error producer(const IPorts * ports, const Message * msg){
 }
 */
 
+#include <memory>
+
+namespace kq{
+	namespace flows3{
+		enum Error{
+			
+		};
+		
+		typedef int PortNumber;
+		typedef size_t Index;
+		
+		class IProcessor{
+		public:
+			
+		};
+		
+		class IMessage{
+			
+		};
+		
+		class IReadableMessage : public IMessage{
+			
+		};
+		
+		class IWritableMessage : public IMessage{
+			
+		};
+		
+		//typedef int ProcessorSocket;
+		//ProcessorSocket createSocket(Error (*funcProcessor)(ProcessorSocket));
+		
+		class IStream{
+			Error setWindow(IStream s);
+			Error slide(Index count);
+		};
+		
+		class IReadableStream: public IStream{
+		public:
+			
+		};
+		
+		class IWritableStream : public IStream{
+		public:
+		};
+		
+		class ISocket{
+		public:
+			Error linkPorts(PortNumber, PortNumber);
+			Error createSocket(ISocket **);
+			Error openPortForRead(IReadableStream **);
+			Error openPortForWrite(IWritableStream **);
+			Error closePort(IStream **);
+		};
+		
+		
+		Error test_processor0(){
+		}
+		
+		Error test(){
+		}
+	}
+}
 
 using namespace kq;
 using namespace kq::core;
@@ -496,6 +558,7 @@ class FlowSessionClient:public IFlowSessionClient{
 public:
 
 };
+
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
