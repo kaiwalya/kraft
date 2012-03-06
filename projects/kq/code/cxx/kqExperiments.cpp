@@ -484,67 +484,326 @@ Error producer(const IPorts * ports, const Message * msg){
 
 }
 */
-
+#include <assert.h>
 #include <memory>
-
+#define nullptr (0);
 namespace kq{
 	namespace flows3{
+		//Class RangeTree, should move to data namespace
+		class RangeTree{
+			struct Node{
+				void * from;
+				void * to;
+				void * data;
+				Node * next;
+			};
+			
+			Node * first;
+			
+			Node * find(void * mem){
+				Node * n = first;
+				for(;n;){
+					if(n->from <= mem && mem <= n->to){
+						return n;
+					}
+					n = n->next;
+					
+					if(n == first){
+						break;
+					}
+				}
+				return nullptr;
+			}
+		public:
+			enum Error{
+				kErrNone,
+				kErrOverlappingRange,
+				kErrUnknownRange,
+			};
+			
+
+			RangeTree(){
+				first = nullptr;
+			}
+			
+			Error addRange(void * from, void * to, void * data){
+				if(!find(from)){
+					if(!find(to)){
+						Node * newnode = new Node();
+						newnode->from = from;
+						newnode->to = to;
+						newnode->data = data;
+						if(!first){
+							first = newnode;
+						}
+						newnode->next = first;
+						first = newnode;
+						return kErrNone;
+					}
+				}
+				return kErrOverlappingRange;
+			}
+			
+			Error removeRange(void * from, void * to, void ** data){
+				Node * n1 = find(from);
+				Node * n2 = find(to);
+				if(n1 == n2){
+					if(n1){
+						if(data){
+							*data = n1->data;
+						}
+						Node * next = n1->next;
+						(*n1) = (*next);
+						delete next;
+						if(next == first){
+							assert(n1 == first);
+							first = nullptr;
+						}
+						return kErrNone;
+					}
+					return kErrUnknownRange;
+				}
+				return kErrOverlappingRange;
+			}
+			
+			Error findRange(void * val, void ** data){
+				Node * n = find(val);
+				if(n){
+					if(data){
+						*data = n->data;
+					}
+					return kErrNone;
+				}
+				return kErrUnknownRange;
+			}
+		};
+		//Class RangeTree ends;
+		
+		
+		//Public API begin
+		typedef int ProcessorID;
+		typedef int PortID;
+		typedef int LinkID;
+
+		
 		enum Error{
-			
+			kErrNone,
+			kErrOutOfMemory,
+			kErrUndefinedID,
+		};
+		typedef Error (*ProcessorFunc)();
+		
+		struct FlowsAPI{
+
+			Error (*processor_create)(ProcessorID *, ProcessorFunc);
+			Error (*processor_wait)(ProcessorID id);
+			Error (*processor_link)(LinkID *, ProcessorID, PortID, ProcessorID, PortID);
+			Error (*processor_unlink)(LinkID);
 		};
 		
-		typedef int PortNumber;
-		typedef size_t Index;
 		
-		class IProcessor{
+		Error flows_init(FlowsAPI *);
+		Error flows_fini();
+		
+		//Public API End
+		
+	
+		//Processor Class
+
+		class Global;
+		class Processor{
+			friend class Global;
+			
+			typedef unsigned int Count;
+			
+			static Global * g;
+			
+			//Look at the stack to get the current processor
+			static Error findCurrent(Processor **);
 		public:
+			static Error loadClass(FlowsAPI * api);
+			static Error unloadClass();
+			static Error processor_create(ProcessorID *, ProcessorFunc);
+			static Error processor_wait(ProcessorID id);
+			static Error processor_link(LinkID *, ProcessorID, PortID, ProcessorID, PortID);
+			static Error processor_unlink(LinkID);
+			
+		private:
+			ProcessorID pid;
+			ProcessorFunc func;
+			Processor * parent;
+			Count childCount;
+			Processor * children;
+			
+			
+			Processor();
+			Processor(Processor * owner, ProcessorFunc func);
+			
+			//Convert processor to ID
+			ProcessorID toID();
+			//Find a child with a given ID
+			Error findChildWithID(Processor ** child, ProcessorID);
+			//Find a link with a givenID
+			Error findLinkWithID(LinkID);
+			
+			Error create(Processor ** out, ProcessorFunc);
+			Error wait();
+			Error link(LinkID *, Processor * child1, PortID port1, Processor * child2, PortID port2);
+			Error unlink(LinkID);
+			
+
 			
 		};
 		
-		class IMessage{
-			
+		struct Global{
+			RangeTree rangeTree;
+			Processor rootProcessor;
+			Global();
+			~Global();
 		};
 		
-		class IReadableMessage : public IMessage{
-			
-		};
+		Global * Processor::g = nullptr;
 		
-		class IWritableMessage : public IMessage{
-			
-		};
-		
-		//typedef int ProcessorSocket;
-		//ProcessorSocket createSocket(Error (*funcProcessor)(ProcessorSocket));
-		
-		class IStream{
-			Error setWindow(IStream s);
-			Error slide(Index count);
-		};
-		
-		class IReadableStream: public IStream{
-		public:
-			
-		};
-		
-		class IWritableStream : public IStream{
-		public:
-		};
-		
-		class ISocket{
-		public:
-			Error linkPorts(PortNumber, PortNumber);
-			Error createSocket(ISocket **);
-			Error openPortForRead(IReadableStream **);
-			Error openPortForWrite(IWritableStream **);
-			Error closePort(IStream **);
-		};
-		
-		
-		Error test_processor0(){
+		Error Processor::create(Processor **out, ProcessorFunc func){
+			Processor * pid = new Processor(this, func);
+			*out = pid;
+			return kErrNone;
 		}
 		
-		Error test(){
+		Error Processor::wait(){
+			return kErrOutOfMemory;
 		}
+		
+		Error Processor::link(LinkID * link, Processor * child1, PortID portid1, Processor * child2, PortID portid2){
+			return kErrOutOfMemory;
+		}
+		
+		Error Processor::unlink(LinkID){
+			return kErrOutOfMemory;
+		}
+		
+		Error Processor::processor_create(ProcessorID * id, ProcessorFunc func){
+			Error err;
+			Processor * pthis;
+			if(kErrNone == (err = findCurrent(&pthis))){
+				Processor * child;
+				if(kErrNone == (err = pthis->create(&child, func))){
+					(*id) = child->toID();
+				}
+			}
+			return err;
+		}
+		
+		Error Processor::processor_wait(ProcessorID id){
+			Error err;
+			Processor * pthis;
+			if(kErrNone == (err = findCurrent(&pthis))){		
+				Processor * child;
+				if(kErrNone == (err = pthis->findChildWithID(&child, id))){
+					err = child->wait();
+				}
+			}
+			return err;
+		}
+		
+		Error Processor::processor_link(LinkID * lid, ProcessorID pid1, PortID portid1, ProcessorID pid2, PortID portid2){
+			Error err;
+			Processor * pthis;
+			if(kErrNone == (err = findCurrent(&pthis))){					
+				Processor * child1;
+				if(kErrNone == (err = pthis->findChildWithID(&child1, pid1))){
+					Processor * child2;
+					if(kErrNone == (err = pthis->findChildWithID(&child2, pid2))){
+						err = pthis->link(lid, child1, portid1, child2, portid2);
+					}
+				}
+			}
+			return err;
+		}
+		
+		Error Processor::processor_unlink(LinkID lid){
+			Error err;
+			Processor * pthis;
+			if(kErrNone == (err = findCurrent(&pthis))){
+				err = pthis->unlink(lid);
+			}
+			return err;
+		}
+
+		
+		Processor::Processor(){
+			//This constructor should be used only on the root processor
+			assert(this == &g->rootProcessor);
+			parent = nullptr;
+			childCount = 0;
+		}
+		
+		Processor::Processor(Processor * owner, ProcessorFunc func){
+			parent = owner;
+			childCount = 0;
+		}
+		
+		Global::Global(){
+			
+		}
+		
+		Global::~Global(){
+			
+		}
+		
+		Error Processor::loadClass(FlowsAPI * api){
+			if(!g){
+				g = (Global *)malloc(sizeof(Global));
+				if(g){
+					new (g)Global();
+					api->processor_create = Processor::processor_create;
+					api->processor_wait = Processor::processor_wait;
+					api->processor_link = Processor::processor_link;
+					api->processor_unlink = Processor::processor_unlink;
+					return kErrNone;
+				}
+				return kErrOutOfMemory;
+			}
+			return kErrNone;
+		}
+		
+		Error Processor::unloadClass(){
+			if(g){
+				g->~Global();
+				free(g);
+				g = nullptr;
+			}
+			return kErrNone;
+		}
+		
+		Error Processor::findCurrent(Processor ** processor){
+			RangeTree::Error rangeerr = g->rangeTree.findRange(&processor, (void **)processor);
+			
+			if(rangeerr == RangeTree::kErrNone){
+				return kErrNone;
+			}
+			assert(g != 0);
+			*processor = &g->rootProcessor;
+			return kErrNone;
+		}
+		
+		Error Processor::findChildWithID(Processor ** child, ProcessorID id){
+			Count c = childCount;
+			Count i = 0;
+			while(i < c){
+				if(children[i].pid == id){
+					*child = &children[i];
+				}
+				i++;
+			}
+			return kErrUndefinedID;
+		}
+		
+		ProcessorID Processor::toID(){
+			return pid;
+		}
+		
+		//Processor class end
 	}
 }
 
@@ -559,6 +818,14 @@ public:
 
 };
 
+
+flows3::Error test1(){
+	return flows3::kErrNone;
+}
+
+flows3::Error test2(){
+	return flows3::kErrNone;
+}
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
@@ -601,6 +868,20 @@ int main(int /*argc*/, char ** /*argv*/){
 				err = dhs.dooperation(DHSSocket::kSocketCreate, &o);
 			}
 			*/
+			{
+				flows3::FlowsAPI api;
+				flows3::Processor::loadClass(&api);
+				flows3::ProcessorID pid[2];
+				
+				api.processor_create(&pid[0], test1);
+				api.processor_create(&pid[1], test2);
+				
+				api.processor_link(0, pid[0], 1, pid[1], 1);
+				
+				api.processor_wait(pid[1]);
+				
+				flows3::Processor::unloadClass();
+			}
 
 			{
 				Pointer<IFlowSessionServer> pServer;
