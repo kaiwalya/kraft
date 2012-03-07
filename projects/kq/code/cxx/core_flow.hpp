@@ -9,6 +9,31 @@
 
 namespace kq{
 	namespace core{
+		namespace flows3{
+			typedef int ProcessorID;
+			typedef int PortID;
+			typedef int LinkID;
+
+
+			enum Error{
+				kErrNone,
+				kErrOutOfMemory,
+				kErrUndefinedID,
+			};
+			typedef Error (*ProcessorFunc)();
+
+			struct FlowsAPI{
+				Error (*processor_create)(ProcessorID *, ProcessorFunc);
+				Error (*processor_wait)(ProcessorID id);
+				Error (*processor_link)(LinkID *, ProcessorID, PortID, ProcessorID, PortID);
+				Error (*processor_unlink)(LinkID);
+			};
+
+			Error initialize(FlowsAPI *);
+			Error finalize(FlowsAPI *);
+
+		}
+
 		namespace flows2{
 			enum FlowsError{
 				kErrNone,
