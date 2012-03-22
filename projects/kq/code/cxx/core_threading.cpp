@@ -2,7 +2,7 @@
 #include "core_IntegerTypes.hpp"
 #include "core_oops.hpp"
 #include "pthread.h"
-#include "memory"
+#include <memory>
 
 using namespace kq::core::threading;
 
@@ -18,6 +18,11 @@ IMutex::~IMutex(){
 ICondition::~ICondition(){
 
 }
+/*
+IContext::~IContext(){
+
+}
+*/
 
 class Mutex: public IMutex{
 
@@ -168,7 +173,55 @@ public:
 		return kErrBadState;
 	}
 };
+/*
+#include "ucontext.h"
 
+class Context: public IContext{
+	ThreadFunc f;
+	void * d;
+	ucontext_t c;
+
+	static void * worker(void * data){
+		Context * c = ((Context *)data);
+		(*c->f)(d);
+
+		//Should this function return ever???
+		kq::core::oops::assume(false);
+	}
+
+public:
+
+	Context(ThreadFunc func, void * data){
+		getcontext(&c);
+		c.uc_stack.ss_size = 16 * 1024;
+		c.uc_stack.ss_sp = malloc(c.uc_stack.ss_size);
+		if(c.uc_stack.ss_sp){
+			c.uc_stack.ss_flags = 0;
+			makecontext(c, worker, 1, data);
+		}
+	}
+
+	Context(){
+
+	}
+
+	~Context(){
+
+	}
+
+	virtual Error load(IContext * saveOld){
+		Error err = kErrNone;
+		if(saveold){
+			err = ((Context *)saveOld)->save();
+		}
+
+	}
+
+	virtual Error save(){
+
+	}
+};
+*/
 
 Error IThread::constuctThread(IThread ** thread, ThreadFunc f, void * data){
 	(*thread) = new Thread(f, data);
@@ -184,6 +237,19 @@ Error IMutex::constructMutex(IMutex ** mutex){
 	*mutex = new Mutex();
 	return kErrNone;
 }
+
+/*
+Error IContext::constructCallContext(IContext ** context, void * (*func)(void *), void * data){
+	*context = new Context(func, data);
+	return kErrNone;
+}
+
+Error IContext::constructEmptyContext(IContext ** context, void * (*func)(void *), void * data){
+	*context = new Context();
+	return kErrNone;
+}
+*/
+
 
 /*
 namespace kq{

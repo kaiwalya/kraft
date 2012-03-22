@@ -54,6 +54,17 @@ namespace kq{
 				ScopeLock(IMutex * m);
 				~ScopeLock();
 			};
+
+			/*
+			class IContext{
+			public:
+				static Error constructCallContext(IContext **, ThreadFunc func, void * data);
+				static Error constructEmptyContext(IContext **);
+				virtual Error load(IContext * saveOld);
+				virtual Error save();
+				virtual ~IContext();
+			};
+			*/
 		}
 	}
 }

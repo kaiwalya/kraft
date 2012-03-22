@@ -508,7 +508,7 @@ flows3::Error test2(){
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
-	int ret;
+	int ret = 0;
 
 	//Create std allocator
 	kq::core::memory::StandardLibraryMemoryAllocator allocStd;
@@ -516,7 +516,7 @@ int main(int /*argc*/, char ** /*argv*/){
 	allocStd.getMemoryWorker(memStd);
 
 	{
-		kq::core::memory::MemoryWorker mem = memStd;
+		//kq::core::memory::MemoryWorker mem = memStd;
 		//kq::core::memory::PooledMemoryAllocator allocPool(memStd);
 		//allocPool.getMemoryWorker(mem);
 		{

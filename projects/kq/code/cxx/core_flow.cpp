@@ -12,6 +12,7 @@ using namespace kq::core::memory;
 
 namespace kq{
 	namespace core{
+
 		namespace flows3{
 			//Class RangeTree, should move to data namespace
 			class RangeTree{
@@ -106,9 +107,9 @@ namespace kq{
 
 
 			//Processor Class
-			class Global;
+			struct Global;
 			class Processor{
-				friend class Global;
+				friend struct Global;
 				typedef unsigned int Count;
 				static Global * g;
 
