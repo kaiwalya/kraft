@@ -4,46 +4,46 @@ sSystem = platform.system();
 
 if sSystem == 'Linux':
 	sDOSFiles = Split("""
-	dos/dos_client.cpp
-	dos/globals.cpp
+	builds/dos_client_/dos_client.cpp
+	builds/dos_client_/globals.cpp
 
-	dos/system/Engine.cpp
-	dos/system/ITimer.cpp
-	dos/system/os/LinuxTimer.cpp
-	dos/system/X/XWindows.cpp
-	dos/system/IWindowManager.cpp
+	builds/dos_client_/system/Engine.cpp
+	builds/dos_client_/system/ITimer.cpp
+	builds/dos_client_/system/os/LinuxTimer.cpp
+	builds/dos_client_/system/X/XWindows.cpp
+	builds/dos_client_/system/IWindowManager.cpp
 
-	dos/oops/Exception.cpp
+	builds/dos_client_/oops/Exception.cpp
 
-	dos/world/TriangleWorld.cpp
+	builds/dos_client_/world/TriangleWorld.cpp
 
-	dos/utils/logger.cpp
-	dos/utils/IVideoGrabber.cpp
-	dos/utils/IVideoConverters.cpp
-	dos/utils/VideoGrabber.cpp
-	dos/utils/VideoGrabberV1.cpp
-	dos/utils/DynamicVariables.cpp
+	builds/dos_client_/utils/logger.cpp
+	builds/dos_client_/utils/IVideoGrabber.cpp
+	builds/dos_client_/utils/IVideoConverters.cpp
+	builds/dos_client_/utils/VideoGrabber.cpp
+	builds/dos_client_/utils/VideoGrabberV1.cpp
+	builds/dos_client_/utils/DynamicVariables.cpp
 
-	dos/utils/comm/IPipe.cpp
-	dos/utils/comm/Pipe.cpp
+	builds/dos_client_/utils/comm/IPipe.cpp
+	builds/dos_client_/utils/comm/Pipe.cpp
 	""");
 	envDOS = Environment();
-	envDOS.VariantDir('dos', 'projects/dos/src');
-	envDOS.Append(CPPPATH = 'dos');
-	envDOS.Replace(LIBS = 'GL');
-	envDOS.Program('dos_client', sDOSFiles);
+	envDOS.VariantDir('builds/dos_client_', 'projects/dos/src', duplicate=0);
+	envDOS.Append(CPPPATH = 'projects/dos/src');
+	envDOS.Append(LIBS = 'GL');
+	envDOS.Program('builds/dos_client', sDOSFiles);
 
 
 	envWin = Environment();
 	envWin.Replace(CC = 'x86_64-w64-mingw32-gcc')
 	envWin.Replace(CXX = 'x86_64-w64-mingw32-g++')
-	envWin.Append(LDFLAGS = '-static-libgcc')
-	envWin.Append(LDFLAGS = '-static-libstdc++')
+	envWin.Append(LINKFLAGS = '-static-libgcc')
+	envWin.Append(LINKFLAGS = '-static-libstdc++')
 
 	envKlarity = envWin.Clone();
-	envKlarity.VariantDir('klr', 'projects/kq/code/cxx');
+	envKlarity.VariantDir('builds/klarity_', 'projects/kq/code/cxx', duplicate=0);
 	envKlarity.Append(LIBS = 'winmm');
-	envKlarity.Program('klarity', ['klr/kqKlarity.cpp', envKlarity.Glob('klr/core_*.cpp')]);
+	envKlarity.Program('builds/klarity', ['builds/klarity_/kqKlarity.cpp', envKlarity.Glob('builds/klarity_/core_*.cpp')]);
 
 	#envCopyP = envWin.Clone();
 	#envCopyP.VariantDir('copyp', 'projects/kq/code/source');
@@ -64,47 +64,7 @@ envEXP.Program('builds/experiments', sExpSources);
 
 sJavaOutDir = 'builds/classes'
 envEXP['JARCHDIR']= sJavaOutDir;
-envEXP.Java(sJavaOutDir, 'projects/kq/code/java/');
+envEXP.Jar('builds/kq.jar', envEXP.Java(sJavaOutDir, 'projects/kq/code/java/'));
 
-sKQStockClasses = Split("""
-	builds/classes/kq/Portfolio$$SymbolInfo.class
-	builds/classes/kq/Portfolio.class
-	builds/classes/kq/Stock.class
-	builds/classes/kq/web/Base64Coder.class
-	builds/classes/kq/web/IHTTPResourceCache.class
-	builds/classes/kq/web/ZipHttpResourceCache.class
-	""");
-
-#find builds/classes/kq -type f | sed 's_\$_\$\$_'
-sKQFlowsDaemonClasses = Split("""
-	builds/classes/kq/flows/daemon/Configuration.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$1.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$2.class
-#	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$MainFrame.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$ParametrizedCallable.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanel.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$1.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$2.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$MainFrame.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$ParametrizedCallable.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld.class
-	builds/classes/kq/flows/daemon/controlpanel/panels/BasePanel.class
-	builds/classes/kq/flows/daemon/controlpanel/panels/Configuration$$1.class
-	builds/classes/kq/flows/daemon/controlpanel/panels/Configuration.class
-	builds/classes/kq/flows/daemon/controlpanel/panels/DaemonStatus.class
-	builds/classes/kq/flows/daemon/controlpanel/panels/NetworkAddress.class
-	builds/classes/kq/flows/daemon/controlpanel/treenodes/BaseTreeNode.class
-	builds/classes/kq/flows/daemon/controlpanel/treenodes/Configuration.class
-	builds/classes/kq/flows/daemon/controlpanel/treenodes/DaemonStatus.class
-	builds/classes/kq/flows/daemon/controlpanel/treenodes/NetworkAddress$$Type.class
-	builds/classes/kq/flows/daemon/controlpanel/treenodes/NetworkAddress.class
-	builds/classes/kq/flows/daemon/Daemon$$DaemonWorker.class
-	builds/classes/kq/flows/daemon/Daemon.class
-	builds/classes/kq/net/NetworkManager.class
-
-	""");
-
-envEXP.Jar('builds/kq.Stock.jar',sKQStockClasses);
-#envEXP.Jar('builds/kq.flows.Daemon.jar',sKQFlowsDaemonClasses);
 
 
