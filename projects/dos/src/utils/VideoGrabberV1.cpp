@@ -13,7 +13,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <stdlib.h>
-#include <linux/videodev.h>
+//#include <linux/videodev.h>
+#include <libv4l1-videodev.h>
 #include <string.h>
 
 

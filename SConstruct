@@ -6,24 +6,24 @@ if sSystem == 'Linux':
 	sDOSFiles = Split("""
 	dos/dos_client.cpp
 	dos/globals.cpp
-	
+
 	dos/system/Engine.cpp
 	dos/system/ITimer.cpp
 	dos/system/os/LinuxTimer.cpp
 	dos/system/X/XWindows.cpp
 	dos/system/IWindowManager.cpp
-	
+
 	dos/oops/Exception.cpp
-	
+
 	dos/world/TriangleWorld.cpp
-	
+
 	dos/utils/logger.cpp
 	dos/utils/IVideoGrabber.cpp
 	dos/utils/IVideoConverters.cpp
 	dos/utils/VideoGrabber.cpp
 	dos/utils/VideoGrabberV1.cpp
 	dos/utils/DynamicVariables.cpp
-	
+
 	dos/utils/comm/IPipe.cpp
 	dos/utils/comm/Pipe.cpp
 	""");
@@ -32,21 +32,23 @@ if sSystem == 'Linux':
 	envDOS.Append(CPPPATH = 'dos');
 	envDOS.Replace(LIBS = 'GL');
 	envDOS.Program('dos_client', sDOSFiles);
-	
-		
+
+
 	envWin = Environment();
-	envWin.Replace(CC = 'i586-mingw32msvc-gcc')
-	envWin.Replace(CXX = 'i586-mingw32msvc-g++')
-	
+	envWin.Replace(CC = 'x86_64-w64-mingw32-gcc')
+	envWin.Replace(CXX = 'x86_64-w64-mingw32-g++')
+	envWin.Append(LDFLAGS = '-static-libgcc')
+	envWin.Append(LDFLAGS = '-static-libstdc++')
+
 	envKlarity = envWin.Clone();
 	envKlarity.VariantDir('klr', 'projects/kq/code/cxx');
 	envKlarity.Append(LIBS = 'winmm');
 	envKlarity.Program('klarity', ['klr/kqKlarity.cpp', envKlarity.Glob('klr/core_*.cpp')]);
-	
+
 	#envCopyP = envWin.Clone();
 	#envCopyP.VariantDir('copyp', 'projects/kq/code/source');
 	#envCopyP.Program('copyprotect', ['copyp/kqCopyProtect.cpp']);
-	
+
 
 envEXP = Environment();
 envEXP.VariantDir('builds/experiments_', 'projects/kq/code/cxx', duplicate=0);
@@ -57,7 +59,7 @@ if sSystem == 'Linux':
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
 	envEXP.Append(CCFLAGS = '-g -Wall');
-	
+
 envEXP.Program('builds/experiments', sExpSources);
 
 sJavaOutDir = 'builds/classes'
@@ -78,7 +80,7 @@ sKQFlowsDaemonClasses = Split("""
 	builds/classes/kq/flows/daemon/Configuration.class
 	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$1.class
 	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$2.class
-	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$MainFrame.class
+#	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$MainFrame.class
 	builds/classes/kq/flows/daemon/controlpanel/ControlPanel$$ParametrizedCallable.class
 	builds/classes/kq/flows/daemon/controlpanel/ControlPanel.class
 	builds/classes/kq/flows/daemon/controlpanel/ControlPanelOld$$1.class
@@ -103,6 +105,6 @@ sKQFlowsDaemonClasses = Split("""
 	""");
 
 envEXP.Jar('builds/kq.Stock.jar',sKQStockClasses);
-envEXP.Jar('builds/kq.flows.Daemon.jar',sKQFlowsDaemonClasses);
+#envEXP.Jar('builds/kq.flows.Daemon.jar',sKQFlowsDaemonClasses);
 
 
