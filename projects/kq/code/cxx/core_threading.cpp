@@ -6,6 +6,9 @@
 
 using namespace kq::core::threading;
 
+#ifndef SIGKILL
+#define SIGKILL 9
+#endif
 
 IThread::~IThread(){
 

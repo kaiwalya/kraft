@@ -64,8 +64,19 @@ elif sSystem == 'Darwin':
 	#envEXP.Append(CXXFLAGS = '-std=c++0x');
 	envEXP.Replace(CC = 'cc');
 	envEXP.Replace(CXX = 'c++');
-
+elif sSystem == 'Windows':
+	envEXP.Append(LIBS = ['pthread']);
+	envEXP.Append(LINKFLAGS = '-static-libgcc')
+	envEXP.Append(LINKFLAGS = '-static-libstdc++')
 envEXP.Program('builds/experiments', sExpSources);
+
+
+if sSystem == 'Windows':
+	envKlarity = envEXP.Clone();
+	envKlarity.VariantDir('builds/klarity_', 'projects/kq/code/cxx', duplicate=0);
+	envKlarity.Append(LIBS = ['winmm']);
+	envKlarity.Append(CXXFLAGS = ['-g'])
+	envKlarity.Program('builds/klarity', ['builds/klarity_/kqKlarity.cpp', envKlarity.Glob('builds/klarity_/core_*.cpp')]);
 
 sJavaOutDir = 'builds/classes'
 envEXP['JARCHDIR']= sJavaOutDir;
