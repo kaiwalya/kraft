@@ -1,187 +1,73 @@
+#if !defined(KQ_CORE_THREADING_H_)
+#define KQ_CORE_THREADING_H_
+
 namespace kq{
 	namespace core{
 		namespace threading{
-			class Mutex: virtual public kq::core::debug::Log, private Resourcer{
-				pthread_mutex_t mutex;
+			typedef int ThreadID;
 
+			enum Error{
+				kErrNone,
+				kErrNotImplemented,
+				kErrOutOfMemory,
+				kErrBadState,
+			};
+
+			typedef Error (*ThreadFunc)(void *);
+
+			class IThread{
 			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
+				static Error constuctThread(IThread **, ThreadFunc, void * data);
 
-			protected:
-				Error sleep(pthread_cond_t * cond){
-					if(0 == pthread_cond_wait(cond, &mutex)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
+				//Start execution
+				virtual Error start() = 0;
 
-				friend class Condition;
+				//Wait for exit
+				virtual Error wait(Error * out) = 0;
 
-			public:
+				//Kill thread
+				virtual Error kill() = 0;
 
-				Error initialize(){
-					if(0 == pthread_mutex_init(&mutex, 0)){
-						Resourcer::initialize();
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				void finalize(){
-					Resourcer::finalize();
-					pthread_mutex_destroy(&mutex);
-				}
-
-				Error lock(){
-					log("[%p]Lock %p...", pthread_self(), this);
-					if(0 == pthread_mutex_lock(&mutex)){
-						log("Locked\n");
-						Resourcer::initialize();
-						return kErrNone;
-					}
-					printf("Lock Error\n");
-					return kErrSome;
-				}
-
-				Error unlock(){
-					log("[%p]Lock %p...", pthread_self(), this);
-					if(0 == pthread_mutex_unlock(&mutex)){
-						log("UnLocked\n");
-						Resourcer::finalize();
-						return kErrNone;
-					}
-					log("UnLock Error\n");
-					return kErrSome;
-				}
-
+				virtual ~IThread();
 
 			};
 
-			class Condition: virtual public kq::core::debug::Log, private Resourcer{
-				pthread_cond_t cond;
-				bool bWake;
-
+			class IMutex{
 			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-				Error initialize(){
-					Error err = kErrSome;
-					if(0 == pthread_cond_init(&cond, 0)){
-						err = kErrNone;
-						Resourcer::initialize();
-						goto done;
-					}
-					done:
-					bWake = false;
-					return err;
-				}
-
-				void finalize(){
-					Resourcer::finalize();
-					pthread_cond_destroy(&cond);
-				}
-
-				Error sleep(Mutex * m){
-					Error err = kErrNone;
-					bWake = false;
-					log("Cond %p and Mutex %p sleeping\n", this, m);
-					while(!bWake && err == kErrNone){
-						err = (m->sleep(&cond) == Mutex::kErrNone)?kErrNone:kErrSome;
-						log("Cond %p and Mutex %p awake\n", this, m);
-					}
-					log("Cond %p and Mutex %p seperated\n", this, m);
-					return err;
-				}
-
-				Error wake(){
-					log("Cond %p waking\n", this);
-					if(0 == pthread_cond_signal(&cond)){
-						log("Cond %p woken\n", this);
-						bWake = true;
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				//TODO: Is wake all compatible with bWake?
-				Error wakeAll(){
-					if(0 == pthread_cond_broadcast(&cond)){
-						bWake = true;
-						return kErrNone;
-					}
-					return kErrSome;
-				}
+				static Error constructMutex(IMutex **);
+				virtual Error lock() = 0;
+				virtual Error unlock() = 0;
+				virtual ~IMutex();
 			};
 
-			class ConditionMutex:public Condition,  public Mutex{
-
-
+			class ICondition: public IMutex{
 			public:
-				Condition::Error initialize(){
-					Condition::Error err = Condition::kErrSome;
-					if(Condition::kErrNone == Condition::initialize()){
-						if(Mutex::kErrNone == Mutex::initialize()){
-							err = Condition::kErrNone;
-							goto done;
-						}
-						Condition::finalize();
-					}
-					done:
-					return err;
-				}
-
-				void finalize(){
-					Mutex::finalize();
-					Condition::finalize();
-				}
-
-				Condition::Error sleep(){
-					return Condition::sleep(this);
-				}
+				static Error constructCondition(ICondition **);
+				virtual Error signal() = 0;
+				virtual Error wait() = 0;
+				virtual ~ICondition();
 			};
 
-			class ScopeMutex{
-				Mutex * mutex;
+			class ScopeLock{
+				IMutex * m;
 			public:
-				ScopeMutex(Mutex * mutex){this->mutex = mutex;mutex->lock();}
-				~ScopeMutex(){mutex->unlock();}
+				ScopeLock(IMutex * m);
+				~ScopeLock();
 			};
 
-			class Thread{
+			/*
+			class IContext{
 			public:
-				enum Error{
-					kErrNone,
-					kErrSome,
-				};
-
-				typedef pthread_t Handle;
-				static Error create(Handle & t, void * (*fn)(void *), void * data){
-					Error ret = kErrSome;
-					if(0 == pthread_create(&t, 0, fn, data)){
-						ret = kErrNone;
-					}
-					return ret;
-				}
-
-				static Error join(Handle &thread, void ** returnval){
-					if(0 == pthread_join(thread, returnval)){
-						return kErrNone;
-					}
-					return kErrSome;
-				}
-
-				static Error attach(Handle &thread){
-					thread = pthread_self();
-					return kErrNone;
-				}
+				static Error constructCallContext(IContext **, ThreadFunc func, void * data);
+				static Error constructEmptyContext(IContext **);
+				virtual Error load(IContext * saveOld);
+				virtual Error save();
+				virtual ~IContext();
 			};
-
+			*/
 		}
 	}
 }
+
+#endif
 

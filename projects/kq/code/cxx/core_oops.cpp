@@ -7,8 +7,8 @@ using namespace kq::core::oops;
 
 #include "assert.h"
 
-void assume(kq::core::ui32 iVal, ...){
-	assert(iVal);
+void kq::core::oops::assume(bool val, ...){
+	assert(val);
 }
 
 Log::Log(){bLogging = true;}

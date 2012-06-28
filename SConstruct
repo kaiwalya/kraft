@@ -1,4 +1,5 @@
 import platform;
+import os;
 
 sSystem = platform.system();
 
@@ -49,8 +50,9 @@ if sSystem == 'Linux':
 	#envCopyP.VariantDir('copyp', 'projects/kq/code/source');
 	#envCopyP.Program('copyprotect', ['copyp/kqCopyProtect.cpp']);
 
-
-envEXP = Environment();
+envEXP = Environment(ENV = os.environ)
+#envEXP = Environment();
+#print envEXP.environ["PATH"];
 envEXP.VariantDir('builds/experiments_', 'projects/kq/code/cxx', duplicate=0);
 sExpSources = ['builds/experiments_/kqExperiments.cpp', envEXP.Glob('builds/experiments_/core_*.cpp'), 'builds/experiments_/ui_UserInterface.cpp'];
 if sSystem == 'Linux':
@@ -59,6 +61,9 @@ if sSystem == 'Linux':
 elif sSystem == 'Darwin':
 	envEXP.Append(LIBS = '');
 	envEXP.Append(CCFLAGS = '-g -Wall');
+	#envEXP.Append(CXXFLAGS = '-std=c++0x');
+	envEXP.Replace(CC = 'cc');
+	envEXP.Replace(CXX = 'c++');
 
 envEXP.Program('builds/experiments', sExpSources);
 

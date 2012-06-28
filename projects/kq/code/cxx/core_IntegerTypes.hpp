@@ -1,8 +1,7 @@
 #ifndef _INTEGER_TYPES_H_
 #define _INTEGER_TYPES_H_
 
-
-
+#define nullptr 0l;
 
 #if defined(_MSC_VER)
 
@@ -36,7 +35,5 @@ typedef wchar_t c16;
 }
 
 #endif
-
-
 
 #endif

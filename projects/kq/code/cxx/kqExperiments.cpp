@@ -485,84 +485,30 @@ Error producer(const IPorts * ports, const Message * msg){
 }
 */
 
-#include <memory>
-
-namespace kq{
-	namespace flows3{
-		enum Error{
-			
-		};
-		
-		typedef int PortNumber;
-		typedef size_t Index;
-		
-		class IProcessor{
-		public:
-			
-		};
-		
-		class IMessage{
-			
-		};
-		
-		class IReadableMessage : public IMessage{
-			
-		};
-		
-		class IWritableMessage : public IMessage{
-			
-		};
-		
-		//typedef int ProcessorSocket;
-		//ProcessorSocket createSocket(Error (*funcProcessor)(ProcessorSocket));
-		
-		class IStream{
-			Error setWindow(IStream s);
-			Error slide(Index count);
-		};
-		
-		class IReadableStream: public IStream{
-		public:
-			
-		};
-		
-		class IWritableStream : public IStream{
-		public:
-		};
-		
-		class ISocket{
-		public:
-			Error linkPorts(PortNumber, PortNumber);
-			Error createSocket(ISocket **);
-			Error openPortForRead(IReadableStream **);
-			Error openPortForWrite(IWritableStream **);
-			Error closePort(IStream **);
-		};
-		
-		
-		Error test_processor0(){
-		}
-		
-		Error test(){
-		}
-	}
-}
 
 using namespace kq;
 using namespace kq::core;
 using namespace kq::core::memory;
 
-using namespace kq::core::flow;
+/*using namespace kq::core::flow;
 
 class FlowSessionClient:public IFlowSessionClient{
 public:
 
 };
+*/
 
+flows3::Error test1(){
+	return flows3::kErrNone;
+}
+
+flows3::Error test2(){
+	return flows3::kErrNone;
+}
 
 int main(int /*argc*/, char ** /*argv*/){
 	//LOGINOUT;
-	int ret;
+	int ret = 0;
 
 	//Create std allocator
 	kq::core::memory::StandardLibraryMemoryAllocator allocStd;
@@ -570,7 +516,7 @@ int main(int /*argc*/, char ** /*argv*/){
 	allocStd.getMemoryWorker(memStd);
 
 	{
-		kq::core::memory::MemoryWorker mem = memStd;
+		//kq::core::memory::MemoryWorker mem = memStd;
 		//kq::core::memory::PooledMemoryAllocator allocPool(memStd);
 		//allocPool.getMemoryWorker(mem);
 		{
@@ -601,7 +547,21 @@ int main(int /*argc*/, char ** /*argv*/){
 				err = dhs.dooperation(DHSSocket::kSocketCreate, &o);
 			}
 			*/
+			{
+				flows3::FlowsAPI api;
+				flows3::initialize(&api);
+				flows3::ProcessorID pid[2];
+				
+				api.processor_create(&pid[0], test1);
+				api.processor_create(&pid[1], test2);
+				
+				api.processor_link(0, pid[0], 1, pid[1], 1);
+				
+				api.processor_wait(pid[1]);
+				flows3::finalize(&api);
+			}
 
+			/*
 			{
 				Pointer<IFlowSessionServer> pServer;
 				{
@@ -634,6 +594,8 @@ int main(int /*argc*/, char ** /*argv*/){
 					}
 				}
 			}
+
+			*/
 			/*
 			IFlowServer * pFlowServer;
 			FlowClient flowClient;
