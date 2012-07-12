@@ -11,5 +11,4 @@ struct IAudioCaptureEngine
 	virtual bool waitForData() = 0;
 	virtual bool areChannelsInterleaved() = 0;
 	virtual bool stop() = 0;
-	virtual 
 };
