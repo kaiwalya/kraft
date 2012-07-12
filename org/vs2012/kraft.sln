@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kq_core", "kq_core\kq_core.vcxproj", "{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kqKlarity", "kqKlarity\kqKlarity.vcxproj", "{ABB30201-B7D6-4E72-BB9E-1C12E65E92F3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}.Debug|Win32.ActiveCfg = Debug|Win32
+		{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}.Debug|Win32.Build.0 = Debug|Win32
+		{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}.Release|Win32.ActiveCfg = Release|Win32
+		{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}.Release|Win32.Build.0 = Release|Win32
+		{ABB30201-B7D6-4E72-BB9E-1C12E65E92F3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{ABB30201-B7D6-4E72-BB9E-1C12E65E92F3}.Debug|Win32.Build.0 = Debug|Win32
+		{ABB30201-B7D6-4E72-BB9E-1C12E65E92F3}.Release|Win32.ActiveCfg = Release|Win32
+		{ABB30201-B7D6-4E72-BB9E-1C12E65E92F3}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

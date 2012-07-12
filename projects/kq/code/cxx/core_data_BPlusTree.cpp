@@ -605,7 +605,7 @@ void BPlusTree::dump(){
 #include "stdio.h"
 #include "stdlib.h"
 #include "memory.h"
-#include "sys/time.h"
+//#include "sys/time.h"
 
 
 bool kq::core::data::BPlusTree_test(kq::core::memory::MemoryWorker &mem){
@@ -669,8 +669,8 @@ bool kq::core::data::BPlusTree_test(kq::core::memory::MemoryWorker &mem){
 
 
 
-						timeval t1, t2;
-						gettimeofday(&t1, 0);
+						//timeval t1, t2;
+						//gettimeofday(&t1, 0);
 
 						//LARGE_INTEGER t1, t2;
 						//QueryPerformanceCounter(&t1);
@@ -805,19 +805,19 @@ bool kq::core::data::BPlusTree_test(kq::core::memory::MemoryWorker &mem){
 						//ui32 breadth = 1 << (ui64)bits[iBitIndex];
 
 
-						gettimeofday(&t2, 0);
+						//gettimeofday(&t2, 0);
 						//QueryPerformanceCounter(&t2);
 
-						double d1, d2, d;
+						//double d1, d2, d;
 
-						d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
-						d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
+						//d1 = (double)t1.tv_sec * 1000000 + (double)t1.tv_usec;
+						//d2 = (double)t2.tv_sec * 1000000 + (double)t2.tv_usec;
 						//d1 = t1.QuadPart;
 						//d2 = t2.QuadPart;
 
-						double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
-						d = ((double)nIter)/((double)nMilliSecs);
-						results[iKeySizeIndex][iBitIndex] = d;
+						//double nMilliSecs = (d2-d1) / 1000.0 + 0.5;
+						//d = ((double)nIter)/((double)nMilliSecs);
+						//results[iKeySizeIndex][iBitIndex] = d;
 						//printf("KeySZ %d/%d  t=%4.4f nIter=%lld depth %d, breadth %d\n", (int)keysizes[iKeySizeIndex], 8/(int)bits[iBitIndex], nMilliSecs, iIter, depth, breadth);
 						//fflush(stdout);
 

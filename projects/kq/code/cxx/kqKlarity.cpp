@@ -1,3 +1,42 @@
+#if !defined(OLD_KLARITY)
+
+#include "WinSock2.h"
+#include "Windows.h"
+#include "initguid.h"
+#include "core.hpp"
+#include "Mmdeviceapi.h"
+#include "atlbase.h"
+#include "Functiondiscoverykeys_devpkey.h"
+#include "memory"
+#include "AudioClient.h"
+
+struct COMInitializer{
+	COMInitializer(){
+		if(FAILED(CoInitialize(nullptr))){
+			throw std::exception("CoInitialize failed");
+		}
+	}
+	~COMInitializer(){
+		CoUninitialize();
+	}
+};
+
+struct SmartHandle{
+public:
+	const HANDLE h;
+	SmartHandle(HANDLE h):h(h){}
+	~SmartHandle(){if(h) CloseHandle(h);}
+};
+
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
+{	
+
+	return 0;
+}
+
+
+#else
 #include "core.hpp"
 
 using namespace kq::core;
@@ -562,3 +601,4 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, LPSTR /*resDir*/, int){
 
 	return 0;
 };
+#endif

@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and '$(VisualStudioVersion)' == ''">$(VCTargetsPath11)</VCTargetsPath>
+  </PropertyGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{02DDDEAB-9214-4517-AB97-4B21E6BD5A25}</ProjectGuid>
+    <RootNamespace>kq_core</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\outputpaths.props" />
+    <Import Project="warnings.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\outputpaths.props" />
+    <Import Project="warnings.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data_IDMap.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_flow.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_IntegerTypes.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_konnect.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_MemoryWorker.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_PooledMemoryAllocator.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_RefCounter.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_StandardLibraryMemoryAllocator.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_oops.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_oops_OutOfMemoryException.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_threading.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_Worker.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_IDMap.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_flow.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_PooledMemoryAllocator.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_RefCounter.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_StandardLibraryMemoryAllocator.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_oops.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_threading.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

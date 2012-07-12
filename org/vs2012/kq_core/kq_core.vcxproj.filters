@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_data_IDMap.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_flow.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_IntegerTypes.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_konnect.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_MemoryWorker.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_PooledMemoryAllocator.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_RefCounter.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_memory_StandardLibraryMemoryAllocator.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_oops.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_oops_OutOfMemoryException.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_threading.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\core_Worker.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_IDMap.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_flow.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_PooledMemoryAllocator.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_RefCounter.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_memory_StandardLibraryMemoryAllocator.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_oops.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\core_threading.cpp" />
+  </ItemGroup>
+</Project>

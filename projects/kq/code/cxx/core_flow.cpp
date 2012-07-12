@@ -304,7 +304,7 @@ namespace kq{
 						const Count maxThreads = 4;
 						resources = (Resources *)malloc(sizeof(Resources));
 						if(resources){
-							new (resources) Resources();
+							new (resources) Resources;
 							resources->threads = (Resource_Thread *)malloc(sizeof(Resource_Thread) * maxThreads);
 							if(resources->threads){
 								resources->nthreads = 0;

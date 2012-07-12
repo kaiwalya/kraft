@@ -1,8 +1,6 @@
 #ifndef _INTEGER_TYPES_H_
 #define _INTEGER_TYPES_H_
 
-#define nullptr 0l;
-
 #if defined(_MSC_VER)
 
 namespace kq{
@@ -19,6 +17,8 @@ typedef wchar_t c16;
 #undef MakeTypes
 
 #elif defined(__GNUC__)
+
+#define nullptr 0l;
 
 #include "stdint.h"
 namespace kq{
