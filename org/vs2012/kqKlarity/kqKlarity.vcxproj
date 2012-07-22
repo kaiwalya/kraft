@@ -73,6 +73,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\projects\kq\code\cxx\kqKlarity_Capture.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\kq_core\kq_core.vcxproj">
+      <Project>{02dddeab-9214-4517-ab97-4b21e6bd5a25}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
