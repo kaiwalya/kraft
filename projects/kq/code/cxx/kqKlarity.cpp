@@ -2,6 +2,11 @@
 
 #include "WinSock2.h"
 #include "Windows.h"
+
+
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+//#include <crtdbg.h>
 #include <vld.h>
 
 /*
@@ -536,496 +541,30 @@ namespace klass
 	
 }
 
-#include "iostream"
-#include "fstream"
-#include "memory"
+//#include "iostream"
+//#include "fstream"
+//#include "memory"
 
-#include "core_memory_StandardLibraryMemoryAllocator.hpp"
+//#include "core_memory_StandardLibraryMemoryAllocator.hpp"
 #include "core_oops.hpp"
+#include "kom.hpp"
+using namespace kq::kom;
 
-namespace kq
+const ClassID ClassManager_CID = { 0x4972fe0d, 0x25e, 0x45cc, { 0x9c, 0xad, 0x34, 0x95, 0x36, 0x98, 0xa5, 0x74 } };
+
+void testKOMcom(IObject * t)
 {
-	namespace core
-	{
-		namespace kom
-		{
-			struct Identifier
-			{
-				union
-				{
-					GUID guid;
-					uint8_t key8[16];
-					uint16_t key16[8];
-					uint32_t key32[4];
-					uint64_t key64[2];
-				};
+	IObject * other;
+	IObject * another;
+	kq::core::oops::assume(t->finder->findInterface(IObject::IID, &other));
+	kq::core::oops::assume(other == t);
+	kq::core::oops::assume(other->finder->findInterface(IObject::IID, &another));
+	kq::core::oops::assume(another == t);
+	t->lifetime->releaseRef();
+	t->lifetime->releaseRef();
 
-				bool operator == (const Identifier & other) const
-				{
-					
-					return this->key64[0] == other.key64[0] && this->key64[1] == other.key64[1];
-				}
-
-				bool operator < (const Identifier & other) const
-				{
-					return this->key64[1] < other.key64[1] || this->key64[0] < other.key64[0];
-				}
-
-				bool operator > (const Identifier & other) const
-				{
-					return this->key64[1] > other.key64[1] || this->key64[0] > other.key64[0];
-				}
-
-				bool operator <= (const Identifier & other) const
-				{
-					return other > *this;
-				}
-
-				bool operator >= (const Identifier & other) const
-				{
-					return other < * this;
-				}
-			};
-
-			typedef Identifier InterfaceID;
-			typedef Identifier ClassID;
-			typedef Identifier TokenID;
-
-			struct IObject;
-			struct ICore
-			{
-				//static const InterfaceID IID;
-				virtual bool findInterface(const InterfaceID & type, IObject ** out) = 0;
-				virtual void addRef() = 0;
-				virtual void releaseRef() = 0;
-			};
-
-			struct IObject
-			{
-				static const InterfaceID IID;
-				virtual ICore * core() = 0;
-				//void addRef(){core()->addRef();}
-				//void releaseRef(){core()->releaseRef();}
-				//void findInterface(const InterfaceID & type, IObject ** out){core()->findInterface(type, out);}
-			};
-
-			struct IClass: public IObject
-			{
-				static const InterfaceID IID;
-				virtual bool createObject(const InterfaceID & type, IObject * owner, IObject ** out) = 0;
-			};
-
-			struct IClassLibrary: public IObject
-			{
-				static const InterfaceID IID;
-				virtual bool findClass(const ClassID & type, IClass ** out) = 0;
-			};
-
-			struct IClassStore: public IObject
-			{
-				static const InterfaceID IID;
-				virtual bool registerClass(const ClassID & type, IClass * factory, TokenID * token) = 0;
-				virtual bool unregisterClass(TokenID token) = 0;
-			};
-
-			struct IClassManager: public IObject
-			{
-				static const InterfaceID IID;
-				virtual bool getClassStore(IClassStore **) = 0;
-				virtual bool getClassLibrary(IClassLibrary **) = 0;
-			};
-			
-			bool createKOM(IObject * owner, IObject ** out);
-		}
-	}
 }
 
-using namespace kq::core::kom;
-
-//ICore {8B8E7C37-82E0-4d2b-B9AF-19E0495ACA89}
-//const InterfaceID ICore::IID = { 0x8b8e7c37, 0x82e0, 0x4d2b, { 0xb9, 0xaf, 0x19, 0xe0, 0x49, 0x5a, 0xca, 0x89 } };
-
-//IObject {5C72078F-FA2F-4213-8E53-54C9A747917A}
-const InterfaceID IObject::IID = { 0x5c72078f, 0xfa2f, 0x4213, { 0x8e, 0x53, 0x54, 0xc9, 0xa7, 0x47, 0x91, 0x7a } };
-
-//IClass {E3DF7609-96A6-4333-8AC0-77AF8F6B2E11}
-const InterfaceID IClass::IID = { 0xe3df7609, 0x96a6, 0x4333, { 0x8a, 0xc0, 0x77, 0xaf, 0x8f, 0x6b, 0x2e, 0x11 } };
-
-//IClassLibrary {5E28A35F-5FE5-4d10-A399-01A3DB4C3F8F}
-const InterfaceID IClassLibrary::IID = { 0x5e28a35f, 0x5fe5, 0x4d10, { 0xa3, 0x99, 0x1, 0xa3, 0xdb, 0x4c, 0x3f, 0x8f } };
-
-//IClassStore {929B0A00-C605-4920-B23B-7CD8F9FF857E}
-const InterfaceID IClassStore::IID = { 0x929b0a00, 0xc605, 0x4920, { 0xb2, 0x3b, 0x7c, 0xd8, 0xf9, 0xff, 0x85, 0x7e } };
-
-//IClassManager {155A7DA2-1C7C-40db-8E66-949ABC54BA9C}
-const InterfaceID IClassManager::IID = { 0x155a7da2, 0x1c7c, 0x40db, { 0x8e, 0x66, 0x94, 0x9a, 0xbc, 0x54, 0xba, 0x9c } };
-
-#include "map"
-	
-
-class Core: public ICore
-{
-	union{
-		size_t count;
-		ICore * owner;
-	};
-
-	void (Core::*addRef_dynamic)();
-	void (Core::*releaseRef_dynamic)();
-	bool (Core::*findInterface_dynamic)(const InterfaceID & type, IObject ** out);
-public:
-	Core(ICore * owner):owner(owner), addRef_dynamic(&Core::addRef_owner), releaseRef_dynamic(&Core::releaseRef_owner), findInterface_dynamic(&Core::findInterface_owner){}
-	Core():count(1), addRef_dynamic(&Core::addRef_self), releaseRef_dynamic(&Core::releaseRef_self), findInterface_dynamic(&Core::findInterface_self){}
-	virtual ~Core(){}
-
-	void addRef_owner(){owner->addRef();}
-	void releaseRef_owner(){owner->releaseRef();}
-	bool findInterface_owner(const InterfaceID & type, IObject ** out){return owner->findInterface(type, out);}
-	void addRef_self(){count++;}
-	void releaseRef_self(){
-		count--;
-		if(!count) finalize();
-	};
-	virtual bool findInterface_self(const InterfaceID & type, IObject ** out) = 0;
-	virtual void finalize(){delete this;}
-	void addRef(){(this->*addRef_dynamic)();}
-	void releaseRef(){(this->*releaseRef_dynamic)();}
-	bool findInterface(const InterfaceID & type, IObject ** out){return (this->*findInterface_dynamic)(type, out);}
-
-};
-
-template<typename T>
-class CoreCover: public Core, public IObject
-{
-public:
-	CoreCover(){}
-	~CoreCover(){uncover()->~T();}
-	void * operator new (size_t sz)
-	{
-		return new uint8_t[sz + sizeof(T)];
-	}
-
-	void operator delete(void * p)
-	{
-		delete [] ((uint8_t *)p);
-	}
-
-	ICore * core(){return this;}
-	T * uncover()
-	{
-		return (T *)(((uint8_t *)(this)) + sizeof(CoreCover));
-	}
-
-	bool findInterface_self(const InterfaceID & type, IObject ** out)
-	{
-		return uncover()->findInterface_self(type, out);
-	}
-
-	static bool createObject(const InterfaceID & type, IObject * owner, IObject ** out)
-	{
-		bool bret = false;
-		IObject * oret;
-		if(owner)
-		{
-			if(type == IObject::IID)
-			{
-				auto cover = new CoreCover<T>();
-				new (cover->uncover())T(owner->core()); 
-				oret = cover;
-				bret = true;
-			}
-		}
-		if(bret)
-		{
-			*out = oret;
-		}
-		return bret;
-	}
-};
-
-template<typename T>
-class CoreFactory: public IClass, public Core
-{
-public:
-	CoreFactory(){}
-	CoreFactory(ICore * owner): Core(owner){}
-	~CoreFactory(){}
-
-	bool findInterface_self(const InterfaceID & type, IObject ** out)
-	{
-		bool bret = false;
-		IObject * oret;
-		if(type == IClass::IID || type == IObject::IID)
-		{
-			addRef();
-			bret = true;
-			oret = this;
-		}
-		if(bret)
-		{
-			*out = oret;
-		}
-		return bret;
-	}
-
-	ICore * core(){return this;}
-
-	bool createObject(const InterfaceID & type, IObject * owner, IObject ** out)
-	{
-		return create(type, owner, out);
-	}
-
-	static bool create(const InterfaceID & type, IObject * owner, IObject ** out)
-	{
-		if(owner == nullptr){
-			bool bret = false;
-			IObject * oret;
-			if(type == IClassManager::IID || type == IObject::IID){
-				bret = true;
-				oret = new T();
-			}
-			if(bret)
-			{
-				*out = oret;
-			}
-			return bret;
-		}
-		else
-		{
-			return CoreCover<T>::createObject(type, owner, out);
-		}
-	}
-};
-
-class ClassManager: public IClassManager, private Core
-{
-public:
-	static const ClassID CID;
-private:
-	class ClassStore: public IClassStore, private Core
-	{
-		ClassManager * owner;
-	public:
-		ClassStore(ClassManager * owner): owner(owner){}
-		ClassStore(ClassManager * owner, ICore * facade): Core(facade), owner(owner){} 
-		~ClassStore(){};
-		bool findInterface_self(const InterfaceID & type, IObject ** out)
-		{
-
-			bool bret = false;
-			IObject * oret;
-			if(type == IClassStore::IID || type == IObject::IID)
-			{
-				addRef();
-				bret = true;
-				oret = this;
-			}
-			if(bret)
-			{
-				*out = oret;
-			}
-			return bret;
-		} 
-
-		ICore * core(){return this;}
-
-		bool registerClass(const ClassID & type, IClass * factory, TokenID * token)
-		{
-			return owner->registerClass(type, factory, token);
-		}
-
-		bool unregisterClass(TokenID token)
-		{
-			return owner->unregisterClass(token);
-		} 
-	};
-
-	class ClassLibrary:public IClassLibrary, private Core
-	{
-		ClassManager * owner;
-	public:
-		ClassLibrary(ClassManager * owner): owner(owner){}
-		ClassLibrary(ClassManager * owner, ICore * facade): Core(facade), owner(owner){} 
-		~ClassLibrary(){};
-		bool findInterface_self(const InterfaceID & type, IObject ** out)
-		{
-			bool bret = false;
-			IObject * oret;
-			if(type == IClassLibrary::IID || type == IObject::IID)
-			{
-				addRef();
-				bret = true;
-				oret = this;
-			}
-			if(bret)
-			{
-				*out = oret;
-			}
-			return bret;
-		}
-		ICore * core(){return this;}
-
-
-		bool findClass(const ClassID & type, IClass ** out)
-		{
-			return owner->findClass(type, out);
-		}
-	};
-
-	struct ClassInfo
-	{
-		ClassID cid;
-		TokenID tid;
-		IClass * iclass;
-	};
-
-	
-	TokenID factoryRegistration;
-	std::map<ClassID, ClassInfo> classMap;
-
-	ClassStore store;
-	ClassLibrary library;
-	
-public:
-	ClassManager():store(this), library(this)
-	{
-		auto factory = new CoreFactory<ClassManager>;
-		registerClass(CID, factory, &factoryRegistration);
-		factory->releaseRef();
-	}
-
-	ClassManager(ICore * owner): Core(owner), store(this), library(this)
-	{
-		auto factory = new CoreFactory<ClassManager>;
-		registerClass(CID, factory, &factoryRegistration);
-		factory->releaseRef();
-	}
-
-	~ClassManager()
-	{
-		//store->core()->releaseRef();
-		//library->core()->releaseRef();
-		unregisterClass(factoryRegistration);
-	}
-	bool findInterface_self(const InterfaceID & type, IObject ** out)
-	{
-		bool bret = false;
-		IObject * oret;
-		if(type == IClassManager::IID || type == IObject::IID)
-		{
-			addRef();
-			bret = true;
-			oret = this;
-		}
-		if(bret)
-		{
-			*out = oret;
-		}
-		return bret;
-	}
-	ICore * core(){return this;}
-	
-	bool registerClass(const ClassID & type, IClass * factory, TokenID * token)
-	{
-		ClassInfo c = {type, type, factory};
-		std::pair<ClassID, ClassInfo> entry(type, std::move(c));
-		auto pr = classMap.emplace(std::move(entry));
-		if(pr.second){
-			factory->core()->addRef();
-			*token = type;
-		}
-		return pr.second;
-	}
-	
-	bool unregisterClass(TokenID token)
-	{
-		auto it = classMap.find(token);
-		if(it != classMap.end())
-		{
-			it->second.iclass->core()->releaseRef();
-			return (classMap.erase(token) == 1);
-		}
-		return false;
-	}
-
-	bool findClass(const ClassID & type, IClass ** out)
-	{
-		auto it = classMap.find(type);
-		if(it != classMap.end())
-		{
-			it->second.iclass->core()->addRef();
-			*out = it->second.iclass;
-			return true;
-		}
-		return false;
-	}
-
-	bool getClassStore(IClassStore ** out)
-	{
-		*out = &store;
-		(*out)->core()->addRef();
-		return true;
-	}
-
-	bool getClassLibrary(IClassLibrary ** out)
-	{
-		*out = &library;
-		(*out)->core()->addRef();
-		return true;
-	}
-
-};
-const ClassID ClassManager::CID = { 0x4972fe0d, 0x25e, 0x45cc, { 0x9c, 0xad, 0x34, 0x95, 0x36, 0x98, 0xa5, 0x74 } };
-
-class KOM: public Core, public IObject
-{
-	IObject * classmanager;
-	void init()
-	{
-		ClassManager c;
-		IClassLibrary * library;
-		c.getClassLibrary(&library);
-		IClass * factory;
-		library->findClass(ClassManager::CID, &factory);
-		factory->createObject(IObject::IID, this, &classmanager);
-		factory->core()->releaseRef();
-		library->core()->releaseRef();
-	}
-	void fini()
-	{
-		classmanager->core()->releaseRef();
-	}
-public:
-	static const ClassID CID;
-	KOM(){init();}
-	KOM(ICore * owner): Core(owner){init();}
-	~KOM(){fini();}
-	bool findInterface_self(const InterfaceID & type, IObject ** out)
-	{
-		bool bret = false;
-		IObject * oret;
-		if(type == IClassManager::IID)
-		{
-			bret = classmanager->core()->findInterface(type, &oret);
-		}
-		if(bret)*out = oret;
-		return bret;
-	};
-
-	ICore * core(){return this;}
-
-	static bool createObject(IObject * owner, IObject ** out)
-	{
-		return CoreFactory<KOM>::create(IObject::IID, owner, out);
-	}
-};
-//{89D0360A-59B2-47c6-9974-4629DEAB5DA9}
-const ClassID KOM::CID = { 0x89d0360a, 0x59b2, 0x47c6, { 0x99, 0x74, 0x46, 0x29, 0xde, 0xab, 0x5d, 0xa9 } };
-
-bool kq::core::kom::createKOM(IObject * owner, IObject ** out)
-{
-	return KOM::createObject(owner, out);
-};
 
 void classManagerTest(IClassManager * s, int iDepth)
 {
@@ -1033,43 +572,56 @@ void classManagerTest(IClassManager * s, int iDepth)
 	IClassLibrary * library = nullptr;
 	{
 		s->getClassStore(&store);
+		testKOMcom(store);
 		s->getClassLibrary(&library);
+		testKOMcom(store);
 	}
 	if(library && store)
 	{
-		
-		IObject * lib2;
-		kq::core::oops::assume(library->core()->findInterface(library->IID, &lib2) && lib2 == library);
-		lib2->core()->releaseRef();
 		IClass * classManager;
-		if(library->findClass(ClassManager::CID, &classManager))
+		if(library->findClass(ClassManager_CID, &classManager))
 		{
 			IClassManager * manager;
-			if(iDepth && classManager->createObject(IClassManager::IID, nullptr, (IObject **)&manager))
+			if(iDepth && classManager->createObject(IClassManager::IID, (IObject **)&manager))
 			{
+				testKOMcom(manager);
 				classManagerTest(manager, iDepth - 1);
-				manager->core()->releaseRef();
+				manager->lifetime->releaseRef();
 			}
-			classManager->core()->releaseRef();
+			classManager->lifetime->releaseRef();
 		}
-		library->core()->releaseRef();
-		store->core()->releaseRef();
+		library->lifetime->releaseRef();
+		store->lifetime->releaseRef();
 	}
 }
+
 
 void komtest()
 {
 	IObject * kom;
-	if(createKOM(nullptr, &kom))
 	{
-		IClassManager * manager;
-		if(kom->core()->findInterface(IClassManager::IID, (IObject **)&manager))
-		{
-			classManagerTest(manager, 0);
-			manager->core()->releaseRef();
-		}
-		kom->core()->releaseRef();
+		
+		kq::core::oops::assume(createKOM(&kom));
+		kom->lifetime->releaseRef();
 	}
+	
+	{
+		kq::core::oops::assume(createKOM(&kom));
+		testKOMcom(kom);
+		kom->lifetime->releaseRef();
+	}
+	
+	{
+		kq::core::oops::assume(createKOM(&kom));	
+		IClassManager * manager;
+		if(kom->finder->findInterface(IClassManager::IID, (IObject **)&manager))
+		{
+			classManagerTest(manager, 3000);
+			manager->lifetime->releaseRef();
+		}
+		kom->lifetime->releaseRef();
+	}
+	
 }
 /*
 struct InterfaceID
@@ -1287,9 +839,6 @@ struct InterfaceID
 //const InterfaceID ICounted::__InterfaceID = {0, 1};
 //const InterfaceID IMemoryBlock::__InterfaceID = {0, 2};
 
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow)
 {	
@@ -1314,7 +863,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, 
 	}
 	*/
 
-	_CrtDumpMemoryLeaks();
+	//_CrtDumpMemoryLeaks();
 
 	/*
 	kq::core::memory::StandardLibraryMemoryAllocator alloc;

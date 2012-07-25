@@ -86,6 +86,7 @@
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.hpp" />
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_threading.hpp" />
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_Worker.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\kom.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.cpp" />
@@ -100,6 +101,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\kom.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

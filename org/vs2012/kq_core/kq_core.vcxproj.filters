@@ -18,6 +18,7 @@
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.hpp" />
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_threading.hpp" />
     <ClInclude Include="..\..\..\projects\kq\code\cxx\core_Worker.hpp" />
+    <ClInclude Include="..\..\..\projects\kq\code\cxx\kom.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\projects\kq\code\cxx\core_data_BPlusTree.cpp" />
@@ -29,5 +30,6 @@
     <ClCompile Include="..\..\..\projects\kq\code\cxx\core_oops.cpp" />
     <ClCompile Include="..\..\..\projects\kq\code\cxx\core_resource_Resourcer.cpp" />
     <ClCompile Include="..\..\..\projects\kq\code\cxx\core_threading.cpp" />
+    <ClCompile Include="..\..\..\projects\kq\code\cxx\kom.cpp" />
   </ItemGroup>
 </Project>
