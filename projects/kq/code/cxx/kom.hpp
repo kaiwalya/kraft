@@ -53,14 +53,16 @@ namespace kq
 		struct IObject;
 		struct ILifetime
 		{
-			//static const InterfaceID IID;
 			virtual void addRef() = 0;
 			virtual void releaseRef() = 0;
 		};
 
 		struct IInterfaceFinder
 		{
-			virtual bool findInterface(const InterfaceID & type, IObject ** out) = 0;
+			virtual bool findInterface(const InterfaceID & type, IObject *, IObject ** out) = 0;
+			virtual bool getSupportedInterfaceCount(size_t & sz) = 0;
+			virtual bool getSupportedInterfaceType(size_t index, InterfaceID & type) = 0;
+			virtual bool isTypeSupported(const InterfaceID & type) = 0;
 		};
 
 		struct IObject
@@ -73,6 +75,44 @@ namespace kq
 			virtual ~IObject(){}
 		};
 
+		struct IObjectFactory: public IObject
+		{
+			static const InterfaceID IID;
+			struct ISpecification: public IObject
+			{
+				static const InterfaceID IID;
+				//typedef uint32_t ParameterIndex;
+				//static const ParameterIndex kParamIndex_NotIndexed;				
+				//virtual bool findParameter(const InterfaceID & type, ParameterIndex idx, IObject ** out) = 0;
+				//virtual bool findAllocatedObject(IObject ** out) = 0;
+			};
+			virtual bool getObjectSize(const InterfaceID & type, ISpecification *, size_t & sz) = 0;
+			virtual bool initializeObject(const InterfaceID & type, ISpecification *, IObject * obj) = 0;
+			virtual bool createObject(const InterfaceID & type, ISpecification *, IObject ** out) = 0;		
+		};		
+
+		struct IClassLibrary: public IObject
+		{
+			static const InterfaceID IID;
+			virtual bool findObjectFactory(const ClassID & type, IObjectFactory ** out) = 0;
+		};
+
+		struct IClassStore: public IObject
+		{
+			static const InterfaceID IID;
+			virtual bool registerClass(const ClassID & type, IObjectFactory * factory, TokenID * token) = 0;
+			virtual bool unregisterClass(TokenID token) = 0;
+		};
+
+		struct IClassManager: public IObject
+		{
+			static const InterfaceID IID;
+			virtual bool getClassStore(IClassStore **) = 0;
+			virtual bool getClassLibrary(IClassLibrary **) = 0;
+		};
+
+		IObjectFactory * getKOMFactory();
+		
 		struct IAllocator: public IObject
 		{
 			static const InterfaceID IID;
@@ -97,7 +137,7 @@ namespace kq
 			static const LogLevel kLogLevel_Error;
 			virtual void log(LogLevel, const char * message) = 0;
 		};
-			
+
 		struct IIntent: public IObject
 		{
 			static const InterfaceID IID;
@@ -111,32 +151,5 @@ namespace kq
 			virtual bool createInnerIntent(const IntentCreationInfo &, IIntent **) = 0;
 		};
 
-		struct IClass: public IObject
-		{
-			static const InterfaceID IID;
-			virtual bool createObject(const InterfaceID & type, IObject ** out) = 0;
-		};
-
-		struct IClassLibrary: public IObject
-		{
-			static const InterfaceID IID;
-			virtual bool findClass(const ClassID & type, IClass ** out) = 0;
-		};
-
-		struct IClassStore: public IObject
-		{
-			static const InterfaceID IID;
-			virtual bool registerClass(const ClassID & type, IClass * factory, TokenID * token) = 0;
-			virtual bool unregisterClass(TokenID token) = 0;
-		};
-
-		struct IClassManager: public IObject
-		{
-			static const InterfaceID IID;
-			virtual bool getClassStore(IClassStore **) = 0;
-			virtual bool getClassLibrary(IClassLibrary **) = 0;
-		};
-
-		bool createKOM(IObject ** out);
 	}
 }

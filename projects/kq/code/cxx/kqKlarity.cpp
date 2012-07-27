@@ -556,13 +556,12 @@ void testKOMcom(IObject * t)
 {
 	IObject * other;
 	IObject * another;
-	kq::core::oops::assume(t->finder->findInterface(IObject::IID, &other));
+	kq::core::oops::assume(t->finder->findInterface(IObject::IID, t, &other));
 	kq::core::oops::assume(other == t);
-	kq::core::oops::assume(other->finder->findInterface(IObject::IID, &another));
+	kq::core::oops::assume(other->finder->findInterface(IObject::IID, other, &another));
 	kq::core::oops::assume(another == t);
 	t->lifetime->releaseRef();
 	t->lifetime->releaseRef();
-
 }
 
 
@@ -578,11 +577,11 @@ void classManagerTest(IClassManager * s, int iDepth)
 	}
 	if(library && store)
 	{
-		IClass * classManager;
-		if(library->findClass(ClassManager_CID, &classManager))
+		IObjectFactory * classManager;
+		if(library->findObjectFactory(ClassManager_CID, &classManager))
 		{
 			IClassManager * manager;
-			if(iDepth && classManager->createObject(IClassManager::IID, (IObject **)&manager))
+			if(iDepth && classManager->createObject(IClassManager::IID, nullptr, (IObject **)&manager))
 			{
 				testKOMcom(manager);
 				classManagerTest(manager, iDepth - 1);
@@ -595,31 +594,99 @@ void classManagerTest(IClassManager * s, int iDepth)
 	}
 }
 
+class Lifetime: public ILifetime
+{
+public:
+	enum class TearDownLogic
+	{
+		kLogicDelete,
+		kLogicDestroy,
+	};
+
+			
+	Lifetime(const IObject * o, TearDownLogic logic = TearDownLogic::kLogicDelete, ILifetime * relay = nullptr):o(o), count(1), relay(relay), logic(logic)
+	{
+		if(relay)
+		{
+			relay->addRef();
+		}
+	}
+	~Lifetime()
+	{
+		kq::core::oops::assume(count == 0);
+	}
+
+	void ILifetime::addRef()
+	{
+		count++;
+	}
+
+	void ILifetime::releaseRef()
+	{
+		if(!--count)
+		{
+			switch(logic)
+			{
+			case TearDownLogic::kLogicDelete:					
+				delete o;
+				break;
+			case TearDownLogic::kLogicDestroy:
+				o->~IObject();
+				break;
+			};
+			if(relay)
+			{
+				relay->releaseRef();
+			}
+		}
+	}
+protected:
+	const IObject * o;
+	size_t count;
+	TearDownLogic logic;
+	ILifetime * relay;
+			
+};
+
 
 void komtest()
 {
-	IObject * kom;
+	
 	{
-		
-		kq::core::oops::assume(createKOM(&kom));
-		kom->lifetime->releaseRef();
+		getKOMFactory()->lifetime->releaseRef();
 	}
 	
 	{
-		kq::core::oops::assume(createKOM(&kom));
-		testKOMcom(kom);
-		kom->lifetime->releaseRef();
-	}
-	
-	{
-		kq::core::oops::assume(createKOM(&kom));	
-		IClassManager * manager;
-		if(kom->finder->findInterface(IClassManager::IID, (IObject **)&manager))
+		IObjectFactory * TheFactory = getKOMFactory();
+		IObject * kom;
+		size_t szKOM;
+		IObjectFactory::ISpecification * spec = nullptr;	
+		kq::core::oops::assume(TheFactory->getObjectSize(IObject::IID, spec, szKOM));		
 		{
-			classManagerTest(manager, 3000);
-			manager->lifetime->releaseRef();
+		
+			kq::core::oops::assume(TheFactory->createObject(IObject::IID, spec, &kom));
+			kom->lifetime->releaseRef();
 		}
-		kom->lifetime->releaseRef();
+	
+		{
+			kq::core::oops::assume(TheFactory->createObject(IObject::IID, spec, &kom));
+			testKOMcom(kom);
+			kom->lifetime->releaseRef();
+		}
+	
+		
+		{
+			kq::core::oops::assume(TheFactory->createObject(IObject::IID, spec, &kom));
+			IClassManager * manager;
+			if(kom->finder->findInterface(IClassManager::IID, kom, (IObject **)&manager))
+			{
+				classManagerTest(manager, 10);
+				manager->lifetime->releaseRef();
+			}
+			kom->lifetime->releaseRef();
+		}
+		
+		TheFactory->lifetime->releaseRef();
 	}
 	
 }
